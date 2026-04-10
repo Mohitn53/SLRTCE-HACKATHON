@@ -194,6 +194,15 @@ export default function HomeScreen() {
                     <View style={styles.grid}>
                         <TouchableOpacity
                             style={styles.card}
+                            onPress={() => navigation.navigate('SoilMoisture')}
+                        >
+                            <Text style={styles.cardIcon}>🌱</Text>
+                            <Text style={styles.cardTitle}>{t('home.soilAnalytics')}</Text>
+                            <Text style={styles.cardSubtitle}>{t('home.soilStatus')}</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.card}
                             onPress={() => navigation.navigate('History')}
                         >
                             <Text style={styles.cardIcon}>📜</Text>

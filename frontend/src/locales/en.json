@@ -38,7 +38,9 @@
         "weatherAlert": "Weather Alert",
         "noAlerts": "No weather alerts. Conditions are favorable!",
         "goodWeather": "Good weather conditions expected",
-        "season": "Season"
+        "season": "Season",
+        "soilAnalytics": "Soil Analytics",
+        "soilStatus": "Check soil health"
     },
     "camera": {
         "title": "Scan Your Crop",

@@ -1,0 +1,24 @@
+# Core Data Processing
+pandas==2.1.1
+numpy==1.24.3
+h5py==3.9.0
+
+# Web Framework
+flask==3.0.0
+flask-cors==4.0.0
+
+# API & Weather
+requests==2.31.0
+python-dotenv==1.0.0
+
+# Data Visualization
+streamlit==1.28.1
+plotly==5.17.0
+
+# Utilities
+python-dateutil==2.8.2
+scipy==1.11.2
+
+# Testing & Development
+pytest==7.4.2
+pytest-cov==4.1.0
