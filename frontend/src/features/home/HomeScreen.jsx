@@ -90,11 +90,32 @@ export default function HomeScreen() {
         }
     };
 
+    const calculateDistance = (lat1, lon1, lat2, lon2) => {
+        const R = 6371; // Radius of the earth in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const d = R * c; // Distance in km
+        return parseFloat(d.toFixed(1));
+    };
+
     const getUserLocation = async () => {
         try {
             const location = await Location.getCurrentPositionAsync({});
+            const { latitude, longitude } = location.coords;
             setLocation(location.coords);
-            setNearbyDepartments(sampleDepartments);
+
+            // Calculate actual distances for sample departments
+            const updatedDepartments = sampleDepartments.map(dept => ({
+                ...dept,
+                distance: calculateDistance(latitude, longitude, dept.lat, dept.lng)
+            })).sort((a, b) => a.distance - b.distance); // Sort by nearest
+
+            setNearbyDepartments(updatedDepartments);
 
             // Simulate weather check (in production, call weather API)
             checkWeatherAlerts(location.coords);
@@ -105,7 +126,6 @@ export default function HomeScreen() {
 
     const checkWeatherAlerts = (coords) => {
         // Simulated weather check - in production, call OpenWeatherMap or similar API
-        // For now, showing "no alerts" message
         setWeatherAlert({
             type: 'safe',
             message: t('home.noAlerts')

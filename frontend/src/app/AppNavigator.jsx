@@ -15,6 +15,8 @@ import { colors } from '../core/theme';
 import { useAuth } from '../store/authStore';
 import { useLanguage } from '../store/languageStore';
 
+import MainLoader from '../features/splash/MainLoader';
+
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
@@ -34,16 +36,15 @@ export default function AppNavigator() {
         } catch (error) {
             console.log('Failed to check splash status:', error);
         } finally {
-            setCheckingSplash(false);
+            // Add a small artificial delay for the beautiful loader
+            setTimeout(() => {
+                setCheckingSplash(false);
+            }, 2500);
         }
     };
 
     if (authLoading || langLoading || checkingSplash) {
-        return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.light.background }}>
-                <ActivityIndicator size="large" color={colors.light.primary} />
-            </View>
-        );
+        return <MainLoader />;
     }
 
     return (
