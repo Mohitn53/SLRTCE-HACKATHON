@@ -115,7 +115,75 @@ const analyzeCropDisease = async (fileBuffer) => {
   }
 };
 
+const generateChatbotReply = async (message, history = [], contextText = '') => {
+  try {
+    const contents = [];
+
+    // Map history elements into format Gemini genAI expects
+    if (history && history.length > 0) {
+      history.forEach(msg => {
+        contents.push({ role: msg.role === 'ai' ? 'model' : msg.role, parts: [{ text: msg.text }] });
+      });
+    }
+
+    // Push the newest message
+    contents.push({ role: 'user', parts: [{ text: message }] });
+
+    console.log("AI Service: Sending chat to Gemini...");
+
+    const response = await ai.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: contents,
+      config: {
+        systemInstruction: `You are highly intelligent, empathetic agricultural assistant chatbot named "Kisan AI".
+        Your goal is to help farmers maximize crop yield, overcome diseases, and understand their soil/weather context.
+        
+        CURRENT CONTEXT:
+        ${contextText}
+        
+        RULES:
+        1. Be concise, direct, and explain WHY you are recommending a specific remedy.
+        2. Format nicely with short paragraphs suitable for mobile screens.
+        3. If advising on chemicals, ALWAYS suggest consulting a local agriculture expert before huge applications.
+        4. Factor in the CURRENT CONTEXT data explicitly. If you use it, state it. 
+        5. If the context does not cover their query, provide general best-practice answers.
+        
+        OUTPUT JSON EXACTLY IN THIS FORMAT:
+        {
+          "text": "The markdown-formatted conversational response to the user.",
+          "contextFlags": ["Array of short string tags indicating what context was used. E.g., '💧 Soil Moisture', '⛅ Weather forecast', '🔍 Scan History'"]
+        }`
+      }
+    });
+
+    if (!response || !response.candidates || !response.candidates[0]) {
+      throw new Error("Invalid response from Gemini API");
+    }
+
+    let text = response.candidates[0].content.parts[0].text;
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    let parsedParams;
+    try {
+      parsedParams = JSON.parse(text);
+    } catch (e) {
+       // fallback if response failed to produce correct strict json
+       parsedParams = { text: text, contextFlags: ["🧠 General Knowledge"] };
+    }
+
+    return parsedParams;
+
+  } catch (error) {
+    console.error("Chat Generation Error:", error);
+    return {
+      text: "I'm having trouble connecting to my knowledge base right now. Please check your connection and try again.",
+      contextFlags: []
+    };
+  }
+};
+
 module.exports = {
   generateCaption,
-  analyzeCropDisease
+  analyzeCropDisease,
+  generateChatbotReply
 };

@@ -402,6 +402,7 @@ const CommunityFeedScreen = () => {
 
 // ─── Forums Tab ───────────────────────────────────────────────────────────────
 const ForumsTab = ({ navigation }) => {
+    const { t } = useLanguage();
     const [forums, setForums] = useState([]);
     useEffect(() => { communityService.getForums().then(setForums); }, []);
 
@@ -429,6 +430,7 @@ const ForumsTab = ({ navigation }) => {
 
 // ─── Leaderboard Tab ─────────────────────────────────────────────────────────
 const LeaderboardTab = () => {
+    const { t } = useLanguage();
     const [leaders, setLeaders] = useState([]);
     useEffect(() => { communityService.getLeaderboard().then(setLeaders); }, []);
 
@@ -470,6 +472,7 @@ const LeaderboardTab = () => {
 
 // ─── Saved Tab ────────────────────────────────────────────────────────────────
 const SavedTab = ({ posts, onPress }) => {
+    const { t } = useLanguage();
     const { savedPostIds } = useCommunity();
     const saved = posts.filter(p => savedPostIds.has(p.id));
     if (saved.length === 0) {

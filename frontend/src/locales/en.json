@@ -58,7 +58,7 @@
     "feature1Desc": "Instant disease detection using high-precision satellite & camera neural networks.",
     "feature2Title": "Soil Intelligence",
     "feature2Desc": "Monitor soil moisture & nutrient levels to optimize your irrigation cycles.",
-    "feature3Title": "Kisan AI Expert",
+    "feature3Title": "Kisaan Setu Expert",
     "feature3Desc": "Get 24/7 agricultural guidance in your local language from our expert chatbot.",
     "feature4Title": "Agri Community",
     "feature4Desc": "Connect with regional farmers to share best practices and market prices.",
@@ -226,13 +226,21 @@
     "solved": "Solved"
   },
   "chatbot": {
-    "title": "Kisan Mitra",
+    "title": "Kisaan Setu",
     "typeMessage": "Type your message...",
     "send": "Send",
     "listening": "Listening...",
     "tapToSpeak": "Tap to speak",
-    "greeting": "Hello! I am Kisan Mitra. How can I help you today?",
-    "connecting": "Connecting to server..."
+    "greeting": "Hello! I am Kisaan Setu. How can I help you today?",
+    "connecting": "Connecting to server...",
+    "q4": "How to treat pests?",
+    "q5": "Current soil health?",
+    "mockWater": "Your sensors show **Soil Moisture is at 62%** and the optimal range for Wheat is 60-70%.\n\nHowever, since my forecast indicates a **40% chance of light rain** tomorrow morning, I recommend pausing irrigation for now to prevent waterlogging and reduce costs.",
+    "mockYellow": "Yellowing leaves (chlorosis) usually point to a **Nitrogen deficiency** or poor drainage.\n\nChecking your recent logs, your soil drains well. Try applying a balanced NPK fertilizer (like 20-20-20) this week. If spots appear, please use the Detection scan to ensure it isn't rust.",
+    "mockFertilizer": "Since it's the vegetative stage for your current crop, a nitrogen-rich fertilizer is best.\n\nRecommendation: Use **Urea (46-0-0)** at about 50kg per acre. Always water the field lightly after application so it seeps effectively into the root zone.",
+    "mockPest": "Pests like Aphids are common right now.\n\n**Organic fix:** Spray Neem oil mixed with a mild soap.\n**Chemical fix:** Imidacloprid (consult local guidelines first).\n\nPlease run an image scan so our AI can identify the exact insect type for a precise treatment plan!",
+    "mockHello": "Hello! I'm Kisaan Setu AI. I can review your soil data, weather forecasts, and crop disease scans to give you tailored farming advice. What's on your mind today?",
+    "mockDefault": "I see. To give you the most accurate agricultural advice, could you describe the specific symptoms or tell me exactly which crop we are discussing today?"
   },
   "soil": {
     "title": "Soil Moisture",
