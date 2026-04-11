@@ -90,6 +90,12 @@ export default function HomeScreen() {
         return () => stopAutoScroll();
     }, []);
 
+    useEffect(() => {
+        if (location) {
+            setDepartments(getDynamicDepartments(location, t));
+        }
+    }, [location, t]);
+
     const requestLocation = async () => {
         try {
             let { status } = await Location.requestForegroundPermissionsAsync();
