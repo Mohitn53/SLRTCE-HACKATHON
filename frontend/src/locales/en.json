@@ -20,6 +20,9 @@
     },
     "home": {
         "greeting": "Hello",
+        "morning": "Good Morning",
+        "afternoon": "Good Afternoon",
+        "evening": "Good Evening",
         "scanCrop": "Scan Crop",
         "detectDiseases": "Detect diseases instantly",
         "history": "History",

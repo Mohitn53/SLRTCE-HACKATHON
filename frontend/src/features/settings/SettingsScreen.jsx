@@ -1,359 +1,241 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Modal, Platform, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors, spacing, typography } from '../../core/theme';
+import { colors, spacing, typography, borderRadius } from '../../core/theme';
 import { useAuth } from '../../store/authStore';
 import { useLanguage } from '../../store/languageStore';
+import { getHistory } from '../../services/uploadService';
+import { MainBackground } from '../../components/MainBackground';
+import { GlassCard } from '../../components/GlassCard';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+
+const { width, height } = Dimensions.get('window');
 
 const LANGUAGES = [
-    {
-        code: 'en',
-        label: 'English',
-        nativeLabel: 'English',
-        voiceCode: 'en-IN' // TTS code
-    },
-    {
-        code: 'hi',
-        label: 'Hindi',
-        nativeLabel: 'हिंदी',
-        voiceCode: 'hi-IN'
-    },
-    {
-        code: 'mr',
-        label: 'Marathi',
-        nativeLabel: 'मराठी',
-        voiceCode: 'mr-IN'
-    },
+    { code: 'en', label: 'English', nativeLabel: 'English', icon: '🇬🇧' },
+    { code: 'hi', label: 'Hindi', nativeLabel: 'हिंदी', icon: '🇮🇳' },
+    { code: 'mr', label: 'Marathi', nativeLabel: 'मराठी', icon: '🇮🇳' },
 ];
 
 export default function SettingsScreen() {
     const navigation = useNavigation();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const { t, language, changeLanguage } = useLanguage();
     const [showLanguageModal, setShowLanguageModal] = useState(false);
+    const [scanCount, setScanCount] = useState(0);
 
-    const handleLanguageSelect = async (lang) => {
-        // Change UI language
-        await changeLanguage(lang.code);
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const history = await getHistory();
+                setScanCount(history?.length || 0);
+            } catch (e) {
+                console.log('Stats fetch error', e);
+            }
+        };
+        fetchStats();
+    }, []);
 
-        // Also change voice language to match
-        try {
-            await AsyncStorage.setItem('language_preference', lang.voiceCode);
-        } catch (e) {
-            console.log('Failed to save voice language', e);
-        }
-
+    const handleLanguageSelect = async (langCode) => {
+        await changeLanguage(langCode);
         setShowLanguageModal(false);
     };
 
     const currentLanguage = LANGUAGES.find(l => l.code === language) || LANGUAGES[0];
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Text style={styles.backText}>←</Text>
-                </TouchableOpacity>
-                <Text style={styles.title}>{t('settings.title')}</Text>
-                <View style={{ width: 40 }} />
-            </View>
-
-            <ScrollView style={styles.content}>
-                {/* User Info */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>{t('settings.profile')}</Text>
-                    <View style={styles.infoCard}>
-                        <View style={styles.avatar}>
-                            <Text style={styles.avatarText}>
-                                {user?.username?.charAt(0).toUpperCase() || 'U'}
-                            </Text>
-                        </View>
-                        <View style={styles.userInfo}>
-                            <Text style={styles.userName}>{user?.username || 'User'}</Text>
-                            <Text style={styles.userEmail}>{user?.email || 'No email'}</Text>
-                        </View>
-                    </View>
+        <MainBackground>
+            <SafeAreaView style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
+                        <Ionicons name="chevron-back" size={28} color={colors.text.primary} />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Account Center</Text>
+                    <View style={{ width: 44 }} />
                 </View>
 
-                {/* Unified Language Setting */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>🌐 {t('settings.uiLanguage')}</Text>
-                    <Text style={styles.sectionDescription}>
-                        Changes app language and voice for the entire experience
-                    </Text>
-
-                    <TouchableOpacity
-                        style={styles.languageSelector}
-                        onPress={() => setShowLanguageModal(true)}
-                    >
-                        <View style={styles.languageSelectorLeft}>
-                            <Text style={styles.languageSelectorIcon}>🌐</Text>
-                            <View>
-                                <Text style={styles.languageSelectorLabel}>
-                                    {currentLanguage.label}
-                                </Text>
-                                <Text style={styles.languageSelectorValue}>
-                                    {currentLanguage.nativeLabel}
-                                </Text>
+                <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+                    <GlassCard style={styles.profileHero} intensity={15}>
+                        <View style={styles.avatarContainer}>
+                            <View style={styles.avatarMain}>
+                                <Text style={styles.avatarChar}>{user?.username?.charAt(0).toUpperCase() || 'F'}</Text>
+                            </View>
+                            <TouchableOpacity style={styles.editBadge}>
+                                <MaterialCommunityIcons name="pencil" size={16} color="white" />
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.profileName}>{user?.username || 'Aggie Farmer'}</Text>
+                        <Text style={styles.profileSub}>{user?.email || 'Active Member'}</Text>
+                        
+                        <View style={styles.statsStrip}>
+                            <View style={styles.statBox}>
+                                <Text style={styles.statVal}>{scanCount}</Text>
+                                <Text style={styles.statLab}>Total Scans</Text>
+                            </View>
+                            <View style={styles.statDivider} />
+                            <View style={styles.statBox}>
+                                <Text style={styles.statVal}>AI</Text>
+                                <Text style={styles.statLab}>Verified</Text>
                             </View>
                         </View>
-                        <Text style={styles.languageSelectorArrow}>›</Text>
-                    </TouchableOpacity>
-                </View>
+                    </GlassCard>
 
-                {/* About */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>{t('settings.about')}</Text>
-                    <View style={styles.infoItem}>
-                        <Text style={styles.infoLabel}>{t('settings.appVersion')}</Text>
-                        <Text style={styles.infoValue}>1.0.0</Text>
-                    </View>
-                    <View style={styles.infoItem}>
-                        <Text style={styles.infoLabel}>{t('settings.model')}</Text>
-                        <Text style={styles.infoValue}>{t('settings.modelName')}</Text>
-                    </View>
-                </View>
-            </ScrollView>
+                    <Text style={styles.labelGroup}>Preferences</Text>
 
-            {/* Language Selection Modal */}
-            <Modal
-                visible={showLanguageModal}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setShowLanguageModal(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{t('settings.selectLanguage')}</Text>
-                            <TouchableOpacity onPress={() => setShowLanguageModal(false)}>
-                                <Text style={styles.modalClose}>✕</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {LANGUAGES.map((lang) => (
-                            <TouchableOpacity
-                                key={lang.code}
-                                style={[
-                                    styles.modalOption,
-                                    language === lang.code && styles.modalOptionSelected
-                                ]}
-                                onPress={() => handleLanguageSelect(lang)}
-                            >
-                                <View style={styles.languageInfo}>
-                                    <Text style={styles.languageLabel}>{lang.label}</Text>
-                                    <Text style={styles.languageNative}>{lang.nativeLabel}</Text>
+                    <TouchableOpacity onPress={() => setShowLanguageModal(true)} activeOpacity={0.7}>
+                        <GlassCard style={styles.settingRow} intensity={20}>
+                            <View style={styles.settingLead}>
+                                <View style={[styles.iconBox, { backgroundColor: 'rgba(79, 195, 247, 0.1)' }]}>
+                                    <MaterialCommunityIcons name="translate" size={24} color={colors.accent} />
                                 </View>
-                                {language === lang.code && (
-                                    <Text style={styles.checkmark}>✓</Text>
-                                )}
-                            </TouchableOpacity>
-                        ))}
+                                <View>
+                                    <Text style={styles.settingMain}>Display Language</Text>
+                                    <Text style={styles.settingSub}>{currentLanguage.nativeLabel}</Text>
+                                </View>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={colors.text.secondary} />
+                        </GlassCard>
+                    </TouchableOpacity>
 
-                        <Text style={styles.modalNote}>
-                            💡 This will change both app text and voice language
-                        </Text>
+                    <TouchableOpacity activeOpacity={0.7}>
+                        <GlassCard style={styles.settingRow} intensity={20}>
+                            <View style={styles.settingLead}>
+                                <View style={[styles.iconBox, { backgroundColor: 'rgba(46, 125, 50, 0.1)' }]}>
+                                    <MaterialCommunityIcons name="bell-ring-outline" size={24} color={colors.primary} />
+                                </View>
+                                <View>
+                                    <Text style={styles.settingMain}>AI Notifications</Text>
+                                    <Text style={styles.settingSub}>Instant alerts active</Text>
+                                </View>
+                            </View>
+                            <View style={styles.customSwitch}>
+                                <View style={styles.switchCircle} />
+                            </View>
+                        </GlassCard>
+                    </TouchableOpacity>
+
+                    <Text style={styles.labelGroup}>System</Text>
+
+                    <GlassCard style={styles.multiCard} intensity={15}>
+                        <TouchableOpacity style={styles.multiRow}>
+                            <MaterialCommunityIcons name="information-outline" size={22} color={colors.text.secondary} />
+                            <Text style={styles.multiText}>App Details</Text>
+                            <Text style={styles.versionTag}>v1.5.2</Text>
+                        </TouchableOpacity>
+                        <View style={styles.innerDivider} />
+                        <TouchableOpacity style={styles.multiRow} onPress={logout}>
+                            <MaterialCommunityIcons name="logout" size={22} color="#EF5350" />
+                            <Text style={[styles.multiText, { color: '#EF5350' }]}>Sign Out</Text>
+                        </TouchableOpacity>
+                    </GlassCard>
+
+                    <View style={{ height: 120 }} />
+                </ScrollView>
+
+                <Modal visible={showLanguageModal} transparent animationType="slide">
+                    <View style={styles.modalOverlay}>
+                        <TouchableOpacity style={styles.modalCloser} activeOpacity={1} onPress={() => setShowLanguageModal(false)} />
+                        <View style={styles.sheetContainer}>
+                            <BlurView intensity={100} tint="light" style={styles.sheetBlur}>
+                                <View style={styles.sheetHandle} />
+                                <Text style={styles.sheetTitle}>Localization</Text>
+                                {LANGUAGES.map((lang) => (
+                                    <TouchableOpacity 
+                                        key={lang.code} 
+                                        onPress={() => handleLanguageSelect(lang.code)}
+                                        style={[styles.langItem, language === lang.code && styles.langItemActive]}
+                                    >
+                                        <View style={styles.langItemLeft}>
+                                            <Text style={styles.langEmoji}>{lang.icon}</Text>
+                                            <Text style={[styles.langLabel, language === lang.code && { color: 'white' }]}>{lang.nativeLabel}</Text>
+                                        </View>
+                                        {language === lang.code && <Ionicons name="checkmark-circle" size={24} color="white" />}
+                                    </TouchableOpacity>
+                                ))}
+                                <View style={{ height: 40 }} />
+                            </BlurView>
+                        </View>
                     </View>
-                </View>
-            </Modal>
-        </SafeAreaView>
+                </Modal>
+            </SafeAreaView>
+        </MainBackground>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.light.background,
-    },
+    container: { flex: 1 },
     header: {
         flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'space-between',
-        padding: spacing.l,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.light.border,
-    },
-    backButton: {
-        padding: spacing.s,
-    },
-    backText: {
-        fontSize: 24,
-        color: colors.light.text,
-    },
-    title: {
-        ...typography.header,
-        color: colors.light.text,
-    },
-    content: {
-        flex: 1,
-    },
-    section: {
-        padding: spacing.l,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.light.border,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: colors.light.text,
-        marginBottom: spacing.s,
-    },
-    sectionDescription: {
-        fontSize: 14,
-        color: colors.light.textSecondary,
-        marginBottom: spacing.m,
-        lineHeight: 20,
-    },
-    infoCard: {
-        flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: colors.light.surface,
-        padding: spacing.m,
-        borderRadius: 12,
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
     },
-    avatar: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: colors.light.primary,
+    headerBtn: { padding: 4 },
+    headerTitle: { fontSize: 20, fontWeight: '900', color: colors.text.primary, letterSpacing: -0.5 },
+    scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+    profileHero: { alignItems: 'center', paddingVertical: spacing.xl, marginBottom: spacing.xl, borderRadius: 30 },
+    avatarContainer: { marginBottom: spacing.md, position: 'relative' },
+    avatarMain: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: spacing.m,
     },
-    avatarText: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: 'white',
-    },
-    userInfo: {
-        flex: 1,
-    },
-    userName: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: colors.light.text,
-        marginBottom: 4,
-    },
-    userEmail: {
-        fontSize: 14,
-        color: colors.light.textSecondary,
-    },
-    languageSelector: {
-        flexDirection: 'row',
+    avatarChar: { fontSize: 42, fontWeight: '900', color: 'white' },
+    editBadge: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        backgroundColor: colors.secondary,
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        justifyContent: 'center',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: colors.light.surface,
-        padding: spacing.m,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: colors.light.border,
-    },
-    languageSelectorLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    languageSelectorIcon: {
-        fontSize: 24,
-        marginRight: spacing.m,
-    },
-    languageSelectorLabel: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: colors.light.text,
-    },
-    languageSelectorValue: {
-        fontSize: 14,
-        color: colors.light.textSecondary,
-        marginTop: 2,
-    },
-    languageSelectorArrow: {
-        fontSize: 24,
-        color: colors.light.textSecondary,
-    },
-    infoItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: spacing.s,
-    },
-    infoLabel: {
-        fontSize: 14,
-        color: colors.light.textSecondary,
-    },
-    infoValue: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: colors.light.text,
-    },
-    // Modal Styles
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'flex-end',
-    },
-    modalContent: {
-        backgroundColor: colors.light.surface,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        padding: spacing.l,
-        maxHeight: '70%',
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: spacing.l,
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: colors.light.text,
-    },
-    modalClose: {
-        fontSize: 24,
-        color: colors.light.textSecondary,
-        padding: spacing.s,
-    },
-    modalOption: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: colors.light.background,
-        padding: spacing.m,
-        borderRadius: 12,
-        marginBottom: spacing.s,
         borderWidth: 2,
-        borderColor: 'transparent',
+        borderColor: 'white',
     },
-    modalOptionSelected: {
-        borderColor: colors.light.primary,
-        backgroundColor: '#f0f9ff',
+    profileName: { fontSize: 24, fontWeight: '900', color: colors.text.primary },
+    profileSub: { fontSize: 13, color: colors.text.secondary, fontWeight: '700', marginTop: 2 },
+    statsStrip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: spacing.xl,
+        backgroundColor: 'rgba(0,0,0,0.03)',
+        borderRadius: 20,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
     },
-    languageInfo: {
-        flex: 1,
-    },
-    languageLabel: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: colors.light.text,
-        marginBottom: 2,
-    },
-    languageNative: {
-        fontSize: 14,
-        color: colors.light.textSecondary,
-    },
-    checkmark: {
-        fontSize: 24,
-        color: colors.light.primary,
-        fontWeight: 'bold',
-    },
-    modalNote: {
-        fontSize: 12,
-        color: colors.light.textSecondary,
-        textAlign: 'center',
-        marginTop: spacing.m,
-        fontStyle: 'italic',
-    },
+    statBox: { alignItems: 'center' },
+    statVal: { fontSize: 18, fontWeight: '900', color: colors.text.primary },
+    statLab: { fontSize: 12, color: colors.text.secondary, fontWeight: '700' },
+    statDivider: { width: 1, height: 24, backgroundColor: 'rgba(0,0,0,0.1)', marginHorizontal: 30 },
+    labelGroup: { fontSize: 15, fontWeight: '800', color: colors.text.primary, marginBottom: spacing.sm, marginLeft: 4, marginTop: spacing.lg },
+    settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, marginBottom: spacing.sm, borderRadius: 20 },
+    settingLead: { flexDirection: 'row', alignItems: 'center' },
+    iconBox: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: spacing.md },
+    settingMain: { fontSize: 16, fontWeight: '800', color: colors.text.primary },
+    settingSub: { fontSize: 12, color: colors.text.secondary, fontWeight: '600' },
+    customSwitch: { width: 40, height: 22, borderRadius: 11, backgroundColor: colors.primary, justifyContent: 'center', paddingHorizontal: 2 },
+    switchCircle: { width: 18, height: 18, borderRadius: 9, backgroundColor: 'white', alignSelf: 'flex-end' },
+    multiCard: { paddingVertical: 2, marginBottom: spacing.xl, borderRadius: 24 },
+    multiRow: { flexDirection: 'row', alignItems: 'center', padding: spacing.lg },
+    multiText: { flex: 1, marginLeft: 15, fontSize: 15, fontWeight: '700', color: colors.text.primary },
+    versionTag: { fontSize: 12, color: colors.text.secondary, fontWeight: '800' },
+    innerDivider: { height: 1, backgroundColor: 'rgba(0,0,0,0.05)', marginHorizontal: spacing.lg },
+    modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.3)' },
+    modalCloser: { flex: 1 },
+    sheetContainer: { borderTopLeftRadius: 30, borderTopRightRadius: 30, overflow: 'hidden' },
+    sheetBlur: { padding: spacing.xl, alignItems: 'center' },
+    sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(0,0,0,0.08)', marginBottom: spacing.xl },
+    sheetTitle: { fontSize: 22, fontWeight: '900', color: colors.text.primary, marginBottom: spacing.lg },
+    langItem: { width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.lg, backgroundColor: 'rgba(0,0,0,0.03)', borderRadius: 18, marginBottom: spacing.sm },
+    langItemActive: { backgroundColor: colors.primary },
+    langItemLeft: { flexDirection: 'row', alignItems: 'center' },
+    langEmoji: { fontSize: 20 },
+    langLabel: { fontSize: 17, fontWeight: '800', color: colors.text.primary, marginLeft: 12 }
 });

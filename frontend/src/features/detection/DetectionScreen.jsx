@@ -1,785 +1,419 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, ActivityIndicator, ScrollView, TouchableOpacity, SafeAreaView, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Image, ActivityIndicator, ScrollView, TouchableOpacity, SafeAreaView, Alert, TextInput, Dimensions } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import * as Speech from 'expo-speech';
 import { uploadImage } from '../../services/uploadService';
-import { colors, spacing, typography } from '../../core/theme';
+import { colors, spacing, typography, borderRadius } from '../../core/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../store/languageStore';
+import { MainBackground } from '../../components/MainBackground';
+import { GlassCard } from '../../components/GlassCard';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+
+const { width } = Dimensions.get('window');
 
 export default function DetectionScreen() {
     const route = useRoute();
     const navigation = useNavigation();
     const { imageUri } = route.params;
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
 
     const [loading, setLoading] = useState(true);
     const [result, setResult] = useState(null);
     const [error, setError] = useState(null);
     const [isSpeaking, setIsSpeaking] = useState(false);
-    const [language, setLanguage] = useState('en-IN');
-    const [isHelpful, setIsHelpful] = useState(null); // null, true, or false
     const [feedbackComment, setFeedbackComment] = useState('');
     const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
-
+    const [isHelpful, setIsHelpful] = useState(null);
 
     useEffect(() => {
-        loadLanguagePreference();
         processImage();
     }, []);
-
-    const loadLanguagePreference = async () => {
-        try {
-            // Try to load voice language first (set by unified language selector)
-            let voiceLang = await AsyncStorage.getItem('language_preference');
-
-            // If not found, derive from UI language
-            if (!voiceLang) {
-                const uiLang = await AsyncStorage.getItem('app_language');
-                const langMap = {
-                    'en': 'en-IN',
-                    'hi': 'hi-IN',
-                    'mr': 'mr-IN'
-                };
-                voiceLang = langMap[uiLang] || 'en-IN';
-            }
-
-            setLanguage(voiceLang);
-        } catch (e) {
-            console.log('Failed to load language preference', e);
-        }
-    };
 
     const processImage = async () => {
         try {
             const data = await uploadImage(imageUri);
             setResult(data.scan);
-            saveOffline(data.scan);
         } catch (err) {
-            setError('Could not analyze the image. Please try again.');
-            Alert.alert('Analysis Failed', err.message || 'Check your internet connection.');
+            setError(t('detection.errorText') || 'Analysis failed. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
-    const saveOffline = async (scanData) => {
-        try {
-            const history = await AsyncStorage.getItem('scan_history');
-            const parsed = history ? JSON.parse(history) : [];
-            parsed.unshift({ ...scanData, localUri: imageUri, date: new Date().toISOString() });
-            await AsyncStorage.setItem('scan_history', JSON.stringify(parsed));
-        } catch (e) {
-            console.log('Failed to save offline', e);
-        }
-    };
-
-    const speakTreatment = () => {
+    const speakReport = () => {
         if (isSpeaking) {
             Speech.stop();
             setIsSpeaking(false);
             return;
         }
 
-        // Build the speech text
-        let speechText = '';
+        let text = `${result.plant} detected. Condition: ${result.condition}. `;
+        if (result.fullReport?.message) text += result.fullReport.message;
 
-        // Disease name
-        if (result?.condition) {
-            speechText += `Disease detected: ${result.condition}. `;
-        }
-
-        // Message
-        if (result?.fullReport?.message) {
-            speechText += `${result.fullReport.message}. `;
-        }
-
-        // Severity
-        if (result?.fullReport?.severity && result.fullReport.severity !== 'N/A') {
-            speechText += `Severity level: ${result.fullReport.severity}. `;
-        }
-
-        // Organic treatment
-        if (result?.fullReport?.organic && result.fullReport.organic.length > 0) {
-            speechText += 'Organic treatment options: ';
-            result.fullReport.organic.forEach((item, index) => {
-                speechText += `${index + 1}. ${item}. `;
-            });
-        }
-
-        // Chemical treatment
-        if (result?.fullReport?.chemical && result.fullReport.chemical.length > 0) {
-            speechText += 'Chemical treatment options: ';
-            result.fullReport.chemical.forEach((item, index) => {
-                speechText += `${index + 1}. ${item}. `;
-            });
-        }
-
-        // Maintenance
-        if (result?.fullReport?.maintenance && result.fullReport.maintenance.length > 0) {
-            speechText += 'Maintenance tips: ';
-            result.fullReport.maintenance.forEach((item, index) => {
-                speechText += `${index + 1}. ${item}. `;
-            });
-        }
-
-        // Prevention
-        if (result?.fullReport?.prevention && result.fullReport.prevention.length > 0) {
-            speechText += 'Prevention measures: ';
-            result.fullReport.prevention.forEach((item, index) => {
-                speechText += `${index + 1}. ${item}. `;
-            });
-        }
-
-        // Recommendation
-        if (result?.fullReport?.recommendation) {
-            speechText += `Recommendation: ${result.fullReport.recommendation}`;
-        }
-
-        if (speechText) {
-            setIsSpeaking(true);
-            Speech.speak(speechText, {
-                language: language, // Use selected language from settings
-                pitch: 1.0,
-                rate: 0.9, // Slightly slower for clarity
-                onDone: () => setIsSpeaking(false),
-                onStopped: () => setIsSpeaking(false),
-                onError: () => {
-                    setIsSpeaking(false);
-                    Alert.alert('Error', 'Failed to read treatment information');
-                }
-            });
-        }
-    };
-
-    const submitFeedback = async () => {
-        if (isHelpful === null) {
-            Alert.alert(t('detection.error'), t('detection.feedbackQuestion'));
-            return;
-        }
-
-        try {
-            // Save feedback locally
-            const feedbackData = {
-                scanId: result?._id || Date.now(),
-                isHelpful,
-                comment: feedbackComment,
-                timestamp: new Date().toISOString(),
-                disease: result?.condition,
-            };
-
-            const existingFeedback = await AsyncStorage.getItem('user_feedback');
-            const feedbackList = existingFeedback ? JSON.parse(existingFeedback) : [];
-            feedbackList.push(feedbackData);
-            await AsyncStorage.setItem('user_feedback', JSON.stringify(feedbackList));
-
-            setFeedbackSubmitted(true);
-            Alert.alert(t('common.success'), t('detection.feedbackThanks'));
-        } catch (error) {
-            console.error('Failed to save feedback:', error);
-            Alert.alert(t('detection.error'), 'Failed to save feedback');
-        }
+        setIsSpeaking(true);
+        Speech.speak(text, {
+            language: language === 'hi' ? 'hi-IN' : language === 'mr' ? 'mr-IN' : 'en-IN',
+            onDone: () => setIsSpeaking(false),
+            onStopped: () => setIsSpeaking(false),
+        });
     };
 
     if (loading) {
         return (
-            <View style={styles.loadingContainer}>
-                <Image source={{ uri: imageUri }} style={styles.backgroundImage} blurRadius={10} />
-                <View style={styles.overlay} />
-                <ActivityIndicator size="large" color={colors.light.primary} />
-                <Text style={styles.loadingText}>{t('detection.analyzing')}</Text>
-            </View>
+            <MainBackground>
+                <View style={styles.centered}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                    <Text style={styles.loadingText}>AI Processing...</Text>
+                </View>
+            </MainBackground>
         );
     }
 
     if (error) {
         return (
-            <SafeAreaView style={styles.container}>
-                <View style={styles.content}>
-                    <Text style={[typography.title, { color: colors.light.error }]}>{t('detection.error')}</Text>
-                    <Text style={typography.body}>{error}</Text>
-                    <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Home')}>
-                        <Text style={styles.buttonText}>{t('detection.goHome')}</Text>
+            <MainBackground>
+                <View style={styles.centered}>
+                    <MaterialCommunityIcons name="alert-circle-outline" size={64} color={colors.error} />
+                    <Text style={styles.errorText}>{error}</Text>
+                    <TouchableOpacity style={styles.retryBtn} onPress={() => navigation.goBack()}>
+                        <Text style={styles.retryText}>Try Again</Text>
                     </TouchableOpacity>
                 </View>
-            </SafeAreaView>
+            </MainBackground>
         );
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <Image source={{ uri: imageUri }} style={styles.image} />
+        <MainBackground>
+            <SafeAreaView style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <Ionicons name="chevron-back" size={28} color={colors.text.primary} />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Diagnosis</Text>
+                    <TouchableOpacity onPress={speakReport} style={styles.voiceBtn}>
+                        <MaterialCommunityIcons name={isSpeaking ? "stop" : "volume-high"} size={24} color={colors.primary} />
+                    </TouchableOpacity>
+                </View>
 
-                <View style={styles.resultCard}>
-                    <View style={styles.headerRow}>
-                        <Text style={styles.plantName}>{result?.plant || t('detection.plant')}</Text>
-                        <View style={[styles.badge, { backgroundColor: result?.status === 'HEALTHY' ? colors.light.success : colors.light.error }]}>
-                            <Text style={styles.badgeText}>{result?.status || 'Unknown'}</Text>
-                        </View>
-                    </View>
+                <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                    <GlassCard style={styles.imageCard} intensity={20}>
+                        <Image source={{ uri: imageUri }} style={styles.resultImage} />
+                        <GlassCard style={styles.confidenceBadge} intensity={80}>
+                            <Text style={styles.confidenceText}>{Math.round((result?.confidence || 0) * 100)}% Match</Text>
+                        </GlassCard>
+                    </GlassCard>
 
-                    <Text style={styles.diseaseName}>{result?.condition || 'Analyzing...'}</Text>
-
-                    <View style={styles.confidenceRow}>
-                        <Text style={styles.confidence}>{t('detection.confidence')}: {Math.round((result?.confidence || 0) * 100)}%</Text>
-
-                        {/* Speaker Button */}
-                        <TouchableOpacity
-                            style={[styles.speakerButton, isSpeaking && styles.speakerButtonActive]}
-                            onPress={speakTreatment}
-                        >
-                            <Text style={styles.speakerIcon}>{isSpeaking ? '🔊' : '🔈'}</Text>
-                            <Text style={styles.speakerText}>{isSpeaking ? t('detection.stop') : t('detection.listen')}</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.divider} />
-
-                    {/* Message Card */}
-                    {result?.fullReport?.message && (
-                        <View style={styles.messageCard}>
-                            <Text style={styles.messageIcon}>💬</Text>
-                            <Text style={styles.messageText}>{result.fullReport.message}</Text>
-                        </View>
-                    )}
-
-                    {/* Severity Badge */}
-                    {result?.fullReport?.severity && result.fullReport.severity !== 'N/A' && (
-                        <View style={[
-                            styles.severityBadge,
-                            {
-                                backgroundColor:
-                                    result.fullReport.severity === 'High' || result.fullReport.severity === 'Very High' ? '#ff4444' :
-                                        result.fullReport.severity === 'Medium' ? '#ffaa00' : '#44cc44'
-                            }
-                        ]}>
-                            <Text style={styles.severityText}>
-                                ⚠️ {t('detection.severity')}: {result.fullReport.severity}
+                    <GlassCard style={styles.mainDiagnosis}>
+                        <Text style={styles.plantTag}>{result.plant || 'Unidentified Plant'}</Text>
+                        <Text style={styles.conditionTitle}>{result.condition || 'Healthy'}</Text>
+                        
+                        <View style={[styles.statusRow, { backgroundColor: result.status === 'HEALTHY' ? colors.primary + '20' : colors.error + '20' }]}>
+                            <MaterialCommunityIcons 
+                                name={result.status === 'HEALTHY' ? "check-circle" : "alert-rhombus"} 
+                                size={20} 
+                                color={result.status === 'HEALTHY' ? colors.primary : colors.error} 
+                            />
+                            <Text style={[styles.statusText, { color: result.status === 'HEALTHY' ? colors.primary : colors.error }]}>
+                                {result.status}
                             </Text>
                         </View>
+                    </GlassCard>
+
+                    {result.fullReport?.message && (
+                        <GlassCard style={styles.reportCard}>
+                            <Text style={styles.sectionTitle}>AI Observation</Text>
+                            <Text style={styles.reportText}>{result.fullReport.message}</Text>
+                        </GlassCard>
                     )}
 
-                    {/* Treatment Header */}
-                    <Text style={styles.treatmentHeader}>📋 {t('detection.treatment')}</Text>
-
-                    {/* Organic Treatment */}
-                    {result?.fullReport?.organic && result.fullReport.organic.length > 0 && (
-                        <View style={styles.treatmentCard}>
-                            <View style={styles.treatmentCardHeader}>
-                                <Text style={styles.treatmentCardIcon}>🌿</Text>
-                                <Text style={styles.treatmentCardTitle}>{t('detection.organic')}</Text>
+                    <Text style={styles.sectionLabel}>Solutions & Management</Text>
+                    
+                    {/* Organic Solutions */}
+                    {result.fullReport?.organic?.length > 0 && (
+                        <GlassCard style={styles.solutionCard}>
+                            <View style={styles.solutionHeader}>
+                                <Text style={styles.solutionIcon}>🌿</Text>
+                                <Text style={styles.solutionTitle}>Organic Treatment</Text>
                             </View>
-                            <View style={styles.treatmentCardContent}>
-                                {result.fullReport.organic.map((item, index) => (
-                                    <View key={index} style={styles.treatmentItem}>
-                                        <Text style={styles.bulletPoint}>•</Text>
-                                        <Text style={styles.treatmentItemText}>{item}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
+                            {result.fullReport.organic.map((item, idx) => (
+                                <View key={idx} style={styles.bulletItem}>
+                                    <View style={styles.bullet} />
+                                    <Text style={styles.bulletText}>{item}</Text>
+                                </View>
+                            ))}
+                        </GlassCard>
                     )}
 
-                    {/* Chemical Treatment */}
-                    {result?.fullReport?.chemical && result.fullReport.chemical.length > 0 && (
-                        <View style={styles.treatmentCard}>
-                            <View style={styles.treatmentCardHeader}>
-                                <Text style={styles.treatmentCardIcon}>💊</Text>
-                                <Text style={styles.treatmentCardTitle}>{t('detection.chemical')}</Text>
+                    {/* Chemical Solutions */}
+                    {result.fullReport?.chemical?.length > 0 && (
+                        <GlassCard style={styles.solutionCard}>
+                            <View style={styles.solutionHeader}>
+                                <Text style={styles.solutionIcon}>💊</Text>
+                                <Text style={styles.solutionTitle}>Chemical Treatment</Text>
                             </View>
-                            <View style={styles.treatmentCardContent}>
-                                {result.fullReport.chemical.map((item, index) => (
-                                    <View key={index} style={styles.treatmentItem}>
-                                        <Text style={styles.bulletPoint}>•</Text>
-                                        <Text style={styles.treatmentItemText}>{item}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
-                    )}
-
-                    {/* Maintenance Tips */}
-                    {result?.fullReport?.maintenance && result.fullReport.maintenance.length > 0 && (
-                        <View style={styles.treatmentCard}>
-                            <View style={styles.treatmentCardHeader}>
-                                <Text style={styles.treatmentCardIcon}>✅</Text>
-                                <Text style={styles.treatmentCardTitle}>{t('detection.maintenance')}</Text>
-                            </View>
-                            <View style={styles.treatmentCardContent}>
-                                {result.fullReport.maintenance.map((item, index) => (
-                                    <View key={index} style={styles.treatmentItem}>
-                                        <Text style={styles.bulletPoint}>•</Text>
-                                        <Text style={styles.treatmentItemText}>{item}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
+                            {result.fullReport.chemical.map((item, idx) => (
+                                <View key={idx} style={styles.bulletItem}>
+                                    <View style={[styles.bullet, { backgroundColor: colors.accent }]} />
+                                    <Text style={styles.bulletText}>{item}</Text>
+                                </View>
+                            ))}
+                        </GlassCard>
                     )}
 
                     {/* Prevention */}
-                    {result?.fullReport?.prevention && result.fullReport.prevention.length > 0 && (
-                        <View style={styles.treatmentCard}>
-                            <View style={styles.treatmentCardHeader}>
-                                <Text style={styles.treatmentCardIcon}>🛡️</Text>
-                                <Text style={styles.treatmentCardTitle}>{t('detection.prevention')}</Text>
+                    {result.fullReport?.prevention?.length > 0 && (
+                        <GlassCard style={styles.solutionCard}>
+                            <View style={styles.solutionHeader}>
+                                <Text style={styles.solutionIcon}>🛡️</Text>
+                                <Text style={styles.solutionTitle}>Prevention Tips</Text>
                             </View>
-                            <View style={styles.treatmentCardContent}>
-                                {result.fullReport.prevention.map((item, index) => (
-                                    <View key={index} style={styles.treatmentItem}>
-                                        <Text style={styles.bulletPoint}>•</Text>
-                                        <Text style={styles.treatmentItemText}>{item}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
+                            {result.fullReport.prevention.map((item, idx) => (
+                                <View key={idx} style={styles.bulletItem}>
+                                    <View style={[styles.bullet, { backgroundColor: colors.warning }]} />
+                                    <Text style={styles.bulletText}>{item}</Text>
+                                </View>
+                            ))}
+                        </GlassCard>
                     )}
 
-                    {/* Recommendation */}
-                    {result?.fullReport?.recommendation && (
-                        <View style={styles.recommendationCard}>
-                            <Text style={styles.recommendationIcon}>💡</Text>
-                            <Text style={styles.recommendationText}>{result.fullReport.recommendation}</Text>
-                        </View>
-                    )}
-
-                    {/* Fallback */}
-                    {!result?.fullReport?.organic && !result?.fullReport?.chemical && !result?.fullReport?.maintenance && (
-                        <View style={styles.fallbackCard}>
-                            <Text style={styles.fallbackText}>
-                                {result?.fullReport?.treatment || result?.fullReport?.description || t('detection.noData')}
-                            </Text>
-                        </View>
-                    )}
-
-                    {/* Feedback Form */}
-                    {!feedbackSubmitted ? (
-                        <View style={styles.feedbackCard}>
-                            <Text style={styles.feedbackTitle}>💭 {t('detection.feedbackTitle')}</Text>
-
-                            <Text style={styles.feedbackQuestion}>{t('detection.feedbackQuestion')}</Text>
-
-                            <View style={styles.feedbackButtons}>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.feedbackOption,
-                                        isHelpful === true && styles.feedbackOptionSelected
-                                    ]}
+                    {/* Feedback */}
+                    {!feedbackSubmitted && (
+                        <GlassCard style={styles.feedbackCard} intensity={25}>
+                            <Text style={styles.feedbackTitle}>Was this helpful?</Text>
+                            <View style={styles.feedbackChoices}>
+                                <TouchableOpacity 
+                                    style={[styles.choiceBtn, isHelpful === true && styles.choiceActive]} 
                                     onPress={() => setIsHelpful(true)}
                                 >
-                                    <Text style={styles.feedbackIcon}>
-                                        {isHelpful === true ? '✅' : '☑️'}
-                                    </Text>
-                                    <Text style={[
-                                        styles.feedbackOptionText,
-                                        isHelpful === true && styles.feedbackOptionTextSelected
-                                    ]}>
-                                        Yes
-                                    </Text>
+                                    <MaterialCommunityIcons name="thumb-up" size={24} color={isHelpful === true ? 'white' : colors.primary} />
                                 </TouchableOpacity>
-
-                                <View style={{ width: spacing.m }} />
-
-                                <TouchableOpacity
-                                    style={[
-                                        styles.feedbackOption,
-                                        isHelpful === false && styles.feedbackOptionSelected
-                                    ]}
+                                <TouchableOpacity 
+                                    style={[styles.choiceBtn, isHelpful === false && styles.choiceActive]} 
                                     onPress={() => setIsHelpful(false)}
                                 >
-                                    <Text style={styles.feedbackIcon}>
-                                        {isHelpful === false ? '✅' : '☑️'}
-                                    </Text>
-                                    <Text style={[
-                                        styles.feedbackOptionText,
-                                        isHelpful === false && styles.feedbackOptionTextSelected
-                                    ]}>
-                                        No
-                                    </Text>
+                                    <MaterialCommunityIcons name="thumb-down" size={24} color={isHelpful === false ? 'white' : colors.error} />
                                 </TouchableOpacity>
                             </View>
-
                             <TextInput
                                 style={styles.feedbackInput}
-                                placeholder={t('detection.feedbackComment')}
-                                placeholderTextColor={colors.light.textSecondary}
+                                placeholder="Add comments..."
+                                placeholderTextColor={colors.text.secondary}
                                 value={feedbackComment}
                                 onChangeText={setFeedbackComment}
                                 multiline
-                                numberOfLines={3}
-                                textAlignVertical="top"
                             />
-
-                            <TouchableOpacity
-                                style={[
-                                    styles.feedbackSubmitButton,
-                                    isHelpful === null && styles.feedbackSubmitButtonDisabled
-                                ]}
-                                onPress={submitFeedback}
-                                disabled={isHelpful === null}
-                            >
-                                <Text style={styles.feedbackSubmitButtonText}>
-                                    {t('detection.feedbackSubmit')}
-                                </Text>
+                            <TouchableOpacity style={styles.submitBtn} onPress={() => setFeedbackSubmitted(true)}>
+                                <Text style={styles.submitText}>Submit AI Feedback</Text>
                             </TouchableOpacity>
-                        </View>
-                    ) : (
-                        <View style={styles.feedbackThanksCard}>
-                            <Text style={styles.feedbackThanksIcon}>✨</Text>
-                            <Text style={styles.feedbackThanksText}>{t('detection.feedbackThanks')}</Text>
-                        </View>
+                        </GlassCard>
                     )}
 
-                    <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Home')}>
-                        <Text style={styles.buttonText}>{t('detection.done')}</Text>
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
-        </SafeAreaView>
+                    <View style={{ height: 120 }} />
+                </ScrollView>
+            </SafeAreaView>
+        </MainBackground>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.light.background,
     },
-    loadingContainer: {
+    centered: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    backgroundImage: {
-        ...StyleSheet.absoluteFillObject,
-        width: '100%',
-        height: '100%',
-    },
-    overlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.6)',
+        padding: spacing.xl,
     },
     loadingText: {
-        marginTop: spacing.m,
-        color: 'white',
+        marginTop: spacing.md,
         ...typography.subtitle,
+        color: colors.text.primary,
+        fontWeight: '700',
     },
-    scrollContent: {
-        paddingBottom: spacing.xl,
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
     },
-    image: {
+    headerTitle: {
+        ...typography.header,
+        color: colors.text.primary,
+    },
+    backBtn: { padding: 4 },
+    voiceBtn: { padding: 4 },
+    content: {
+        padding: spacing.lg,
+    },
+    imageCard: {
+        padding: 0,
+        height: 250,
+        overflow: 'hidden',
+        marginBottom: spacing.xl,
+    },
+    resultImage: {
         width: '100%',
-        height: 300,
+        height: '100%',
         resizeMode: 'cover',
     },
-    resultCard: {
-        marginTop: -20,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        backgroundColor: colors.light.surface,
-        padding: spacing.l,
-        minHeight: 400,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        elevation: 5,
+    confidenceBadge: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
     },
-    headerRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: spacing.s,
-    },
-    plantName: {
-        fontSize: 18,
-        color: colors.light.textSecondary,
-        fontWeight: '600',
-    },
-    badge: {
-        paddingHorizontal: spacing.m,
-        paddingVertical: spacing.xs,
-        borderRadius: 16,
-    },
-    badgeText: {
-        color: 'white',
-        fontWeight: 'bold',
+    confidenceText: {
+        color: colors.text.primary,
+        fontWeight: '900',
         fontSize: 12,
     },
-    diseaseName: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: colors.light.text,
-        marginBottom: spacing.xs,
-    },
-    confidenceRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+    mainDiagnosis: {
+        padding: spacing.lg,
         alignItems: 'center',
-        marginBottom: spacing.l,
+        marginBottom: spacing.lg,
     },
-    confidence: {
+    plantTag: {
         fontSize: 14,
-        color: colors.light.textSecondary,
-
+        color: colors.text.secondary,
+        fontWeight: '800',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginBottom: 4,
     },
-    divider: {
-        height: 1,
-        backgroundColor: colors.light.border,
-        marginVertical: spacing.m,
+    conditionTitle: {
+        fontSize: 32,
+        fontWeight: '900',
+        color: colors.text.primary,
+        textAlign: 'center',
+        marginBottom: 12,
+        letterSpacing: -0.5,
     },
-    messageCard: {
-        flexDirection: 'row',
-        backgroundColor: '#f0f9ff',
-        borderLeftWidth: 4,
-        borderLeftColor: colors.light.primary,
-        padding: spacing.m,
-        borderRadius: 8,
-        marginBottom: spacing.m,
-    },
-    messageIcon: {
-        fontSize: 20,
-        marginRight: spacing.s,
-    },
-    messageText: {
-        flex: 1,
-        fontSize: 14,
-        color: colors.light.text,
-        lineHeight: 20,
-    },
-    severityBadge: {
-        paddingVertical: spacing.s,
-        paddingHorizontal: spacing.m,
-        borderRadius: 8,
-        marginBottom: spacing.m,
-        alignSelf: 'flex-start',
-    },
-    severityText: {
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: 13,
-    },
-    treatmentHeader: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: colors.light.text,
-        marginTop: spacing.m,
-        marginBottom: spacing.m,
-    },
-    treatmentCard: {
-        backgroundColor: '#fafafa',
-        borderRadius: 12,
-        marginBottom: spacing.m,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: colors.light.border,
-    },
-    treatmentCardHeader: {
+    statusRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: colors.light.surface,
-        paddingVertical: spacing.s,
-        paddingHorizontal: spacing.m,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.light.border,
-    },
-    treatmentCardIcon: {
-        fontSize: 20,
-        marginRight: spacing.s,
-    },
-    treatmentCardTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: colors.light.text,
-    },
-    treatmentCardContent: {
-        padding: spacing.m,
-    },
-    treatmentItem: {
-        flexDirection: 'row',
-        marginBottom: spacing.xs,
-    },
-    bulletPoint: {
-        fontSize: 16,
-        color: colors.light.primary,
-        marginRight: spacing.s,
-        fontWeight: 'bold',
-    },
-    treatmentItemText: {
-        flex: 1,
-        fontSize: 14,
-        color: colors.light.textSecondary,
-        lineHeight: 20,
-    },
-    recommendationCard: {
-        flexDirection: 'row',
-        backgroundColor: '#fffbeb',
-        borderLeftWidth: 4,
-        borderLeftColor: '#f59e0b',
-        padding: spacing.m,
-        borderRadius: 8,
-        marginTop: spacing.m,
-        marginBottom: spacing.m,
-    },
-    recommendationIcon: {
-        fontSize: 20,
-        marginRight: spacing.s,
-    },
-    recommendationText: {
-        flex: 1,
-        fontSize: 14,
-        color: colors.light.text,
-        lineHeight: 20,
-        fontStyle: 'italic',
-    },
-    fallbackCard: {
-        backgroundColor: '#f9fafb',
-        padding: spacing.m,
-        borderRadius: 8,
-        marginBottom: spacing.m,
-    },
-    fallbackText: {
-        fontSize: 14,
-        color: colors.light.textSecondary,
-        lineHeight: 20,
-    },
-    button: {
-        backgroundColor: colors.light.primary,
-        paddingVertical: spacing.m,
-        borderRadius: 12,
-        alignItems: 'center',
-        marginTop: spacing.l,
-    },
-    buttonText: {
-        color: 'white',
-        ...typography.subtitle,
-        fontWeight: '600',
-    },
-    content: {
-        padding: spacing.l,
-        flex: 1,
-        justifyContent: 'center'
-    },
-    speakerButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: colors.light.primary,
-        paddingVertical: spacing.xs,
-        paddingHorizontal: spacing.m,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
         borderRadius: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
     },
-    speakerButtonActive: {
-        backgroundColor: '#ff6b6b',
+    statusText: {
+        marginLeft: 8,
+        fontWeight: '800',
+        fontSize: 14,
     },
-    speakerIcon: {
+    sectionLabel: {
+        ...typography.subtitle,
+        color: colors.text.primary,
+        fontWeight: '800',
+        marginTop: spacing.lg,
+        marginBottom: spacing.md,
+    },
+    reportCard: {
+        padding: spacing.lg,
+    },
+    sectionTitle: {
+        ...typography.body,
+        fontWeight: '800',
+        color: colors.text.primary,
+        marginBottom: 8,
+    },
+    reportText: {
+        ...typography.body,
+        color: colors.text.secondary,
+        lineHeight: 22,
+        fontWeight: '600',
+    },
+    solutionCard: {
+        marginBottom: spacing.md,
+        padding: spacing.lg,
+    },
+    solutionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: spacing.md,
+    },
+    solutionIcon: {
+        fontSize: 24,
+        marginRight: 12,
+    },
+    solutionTitle: {
         fontSize: 18,
-        marginRight: 4,
+        fontWeight: '800',
+        color: colors.text.primary,
     },
-    speakerText: {
-        color: 'white',
-        fontSize: 13,
+    bulletItem: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 10,
+    },
+    bullet: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: colors.primary,
+        marginTop: 6,
+        marginRight: 12,
+    },
+    bulletText: {
+        flex: 1,
+        fontSize: 15,
+        color: colors.text.secondary,
+        lineHeight: 20,
         fontWeight: '600',
     },
     feedbackCard: {
-        backgroundColor: '#f8f9fa',
-        borderRadius: 12,
-        padding: spacing.l,
-        marginTop: spacing.l,
-        marginBottom: spacing.m,
-        borderWidth: 1,
-        borderColor: colors.light.border,
+        marginTop: spacing.xl,
+        padding: spacing.xl,
+        alignItems: 'center',
     },
     feedbackTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: colors.light.text,
-        marginBottom: spacing.m,
+        ...typography.subtitle,
+        color: colors.text.primary,
+        fontWeight: '800',
+        marginBottom: spacing.lg,
     },
-    feedbackQuestion: {
-        fontSize: 14,
-        color: colors.light.textSecondary,
-        marginBottom: spacing.m,
-    },
-    feedbackButtons: {
+    feedbackChoices: {
         flexDirection: 'row',
-        marginBottom: spacing.m,
+        marginBottom: spacing.xl,
     },
-    feedbackOption: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
+    choiceBtn: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: 'rgba(255,255,255,0.4)',
         justifyContent: 'center',
-        backgroundColor: 'white',
-        paddingVertical: spacing.m,
-        paddingHorizontal: spacing.s,
-        borderRadius: 8,
-        borderWidth: 2,
-        borderColor: colors.light.border,
+        alignItems: 'center',
+        marginHorizontal: spacing.md,
     },
-    feedbackOptionSelected: {
-        borderColor: colors.light.primary,
-        backgroundColor: '#f0f9ff',
-    },
-    feedbackIcon: {
-        fontSize: 20,
-        marginRight: spacing.xs,
-    },
-    feedbackOptionText: {
-        fontSize: 14,
-        color: colors.light.textSecondary,
-        fontWeight: '600',
-    },
-    feedbackOptionTextSelected: {
-        color: colors.light.primary,
+    choiceActive: {
+        backgroundColor: colors.primary,
     },
     feedbackInput: {
-        backgroundColor: 'white',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: colors.light.border,
-        padding: spacing.m,
-        fontSize: 14,
-        color: colors.light.text,
-        minHeight: 80,
-        marginBottom: spacing.m,
-    },
-    feedbackSubmitButton: {
-        backgroundColor: colors.light.primary,
-        paddingVertical: spacing.m,
-        borderRadius: 8,
-        alignItems: 'center',
-    },
-    feedbackSubmitButtonDisabled: {
-        backgroundColor: colors.light.border,
-        opacity: 0.6,
-    },
-    feedbackSubmitButtonText: {
-        color: 'white',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    feedbackThanksCard: {
-        backgroundColor: '#f0fdf4',
+        width: '100%',
+        height: 100,
+        backgroundColor: 'rgba(255,255,255,0.4)',
         borderRadius: 12,
-        padding: spacing.l,
-        marginTop: spacing.l,
-        marginBottom: spacing.m,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#86efac',
-    },
-    feedbackThanksIcon: {
-        fontSize: 32,
-        marginBottom: spacing.s,
-    },
-    feedbackThanksText: {
-        fontSize: 16,
+        padding: 12,
+        color: colors.text.primary,
         fontWeight: '600',
-        color: '#16a34a',
-        textAlign: 'center',
+        marginBottom: spacing.lg,
     },
+    submitBtn: {
+        backgroundColor: colors.primary,
+        width: '100%',
+        height: 50,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    submitText: {
+        color: 'white',
+        fontWeight: '800',
+        fontSize: 16,
+    }
 });

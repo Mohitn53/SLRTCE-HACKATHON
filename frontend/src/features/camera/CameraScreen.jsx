@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, SafeAreaView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, SafeAreaView, Platform, Dimensions } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
-import { colors, spacing, typography } from '../../core/theme';
-import { Ionicons } from '@expo/vector-icons'; // Assuming Ionicons is available in Expo standard or I should use simple text
+import { colors, spacing, typography, borderRadius } from '../../core/theme';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 
-// Note: Expo 50+ uses CameraView. If using older request: Camera. 
-// Package.json said "expo-camera": "~17.0.10" which is Expo 52 compatible, uses CameraView.
+const { width, height } = Dimensions.get('window');
 
 export default function CameraScreen() {
     const navigation = useNavigation();
@@ -15,6 +15,7 @@ export default function CameraScreen() {
     const cameraRef = useRef(null);
     const [facing, setFacing] = useState('back');
     const [isCapturing, setIsCapturing] = useState(false);
+    const [flash, setFlash] = useState('off');
 
     useEffect(() => {
         if (permission && !permission.granted) {
@@ -28,7 +29,7 @@ export default function CameraScreen() {
             try {
                 const photo = await cameraRef.current.takePictureAsync({
                     quality: 0.8,
-                    skipProcessing: true, // faster
+                    base64: false,
                 });
                 navigation.navigate('Detection', { imageUri: photo.uri });
             } catch (e) {
@@ -50,20 +51,15 @@ export default function CameraScreen() {
         }
     };
 
-    const toggleCameraFacing = () => {
-        setFacing(current => (current === 'back' ? 'front' : 'back'));
-    };
-
-    if (!permission) {
-        return <View style={styles.container} />;
-    }
+    if (!permission) return <View style={styles.container} />;
 
     if (!permission.granted) {
         return (
             <View style={styles.centered}>
-                <Text style={styles.message}>We need your permission to show the camera</Text>
-                <TouchableOpacity style={styles.button} onPress={requestPermission}>
-                    <Text style={styles.buttonText}>Grant Permission</Text>
+                <MaterialCommunityIcons name="camera-off" size={64} color={colors.primary} />
+                <Text style={styles.message}>Camera access is required for detecting crop diseases.</Text>
+                <TouchableOpacity style={styles.grantButton} onPress={requestPermission}>
+                    <Text style={styles.grantButtonText}>Enable Camera</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -71,36 +67,65 @@ export default function CameraScreen() {
 
     return (
         <View style={styles.container}>
-            <CameraView style={styles.camera} facing={facing} ref={cameraRef}>
-                <SafeAreaView style={styles.uiContainer}>
-
+            <CameraView 
+                style={StyleSheet.absoluteFill} 
+                facing={facing} 
+                ref={cameraRef}
+                enableTorch={flash === 'on'}
+            >
+                <SafeAreaView style={styles.overlay}>
                     {/* Top Bar */}
                     <View style={styles.topBar}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
-                            <Text style={styles.iconText}>✕</Text>
+                        <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()}>
+                            <Ionicons name="close-circle" size={44} color="white" />
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={toggleCameraFacing} style={styles.iconButton}>
-                            <Text style={styles.iconText}>⟲</Text>
+                        
+                        <View style={styles.scanBadge}>
+                            <BlurView intensity={20} tint="dark" style={styles.badgeBlur}>
+                                <Text style={styles.badgeText}>SMART SCANNER</Text>
+                            </BlurView>
+                        </View>
+
+                        <TouchableOpacity style={styles.iconBtn} onPress={() => setFacing(f => f === 'back' ? 'front' : 'back')}>
+                            <Ionicons name="camera-reverse-outline" size={32} color="white" />
                         </TouchableOpacity>
                     </View>
 
                     {/* Bottom Controls */}
-                    <View style={styles.bottomBar}>
-                        <TouchableOpacity style={styles.galleryButton} onPress={pickImage}>
-                            <Text style={styles.iconText}>🖼️</Text>
-                        </TouchableOpacity>
+                    <View style={styles.bottomSection}>
+                        <View style={styles.controlsRow}>
+                            <TouchableOpacity style={styles.sideBtn} onPress={pickImage}>
+                                <MaterialCommunityIcons name="image-area" size={32} color="white" />
+                                <Text style={styles.sideBtnText}>Gallery</Text>
+                            </TouchableOpacity>
 
-                        <TouchableOpacity
-                            style={styles.captureButton}
-                            onPress={takePicture}
-                            disabled={isCapturing}
-                        >
-                            <View style={styles.captureInner} />
-                        </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={styles.captureBtn} 
+                                onPress={takePicture}
+                                disabled={isCapturing}
+                            >
+                                <View style={styles.captureInner}>
+                                    {isCapturing ? <ActivityIndicator color={colors.primary} /> : <View style={styles.captureDot} />}
+                                </View>
+                            </TouchableOpacity>
 
-                        <View style={{ width: 50 }} />
+                            <TouchableOpacity 
+                                style={styles.sideBtn} 
+                                onPress={() => setFlash(f => f === 'off' ? 'on' : 'off')}
+                            >
+                                <MaterialCommunityIcons 
+                                    name={flash === 'on' ? 'flashlight' : 'flashlight-off'} 
+                                    size={32} 
+                                    color={flash === 'on' ? colors.warning : 'white'} 
+                                />
+                                <Text style={styles.sideBtnText}>Flash</Text>
+                            </TouchableOpacity>
+                        </View>
+                        
+                        <View style={styles.tipContainer}>
+                            <Text style={styles.tipText}>Point at the affected leaf for best results</Text>
+                        </View>
                     </View>
-
                 </SafeAreaView>
             </CameraView>
         </View>
@@ -108,87 +133,24 @@ export default function CameraScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: 'black',
-    },
-    camera: {
-        flex: 1,
-    },
-    centered: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-        backgroundColor: colors.light.background,
-    },
-    message: {
-        ...typography.body,
-        textAlign: 'center',
-        marginBottom: 20,
-    },
-    button: {
-        backgroundColor: colors.light.primary,
-        padding: spacing.m,
-        borderRadius: 12,
-    },
-    buttonText: {
-        color: 'white',
-        ...typography.subtitle
-    },
-    uiContainer: {
-        flex: 1,
-        justifyContent: 'space-between',
-    },
-    topBar: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        padding: spacing.l,
-        paddingTop: Platform.OS === 'android' ? spacing.xl + 20 : spacing.l,
-    },
-    iconButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    iconText: {
-        color: 'white',
-        fontSize: 24,
-    },
-    bottomBar: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        paddingBottom: spacing.xl + 20,
-        paddingHorizontal: spacing.l,
-        backgroundColor: 'rgba(0,0,0,0.3)', // Gradient would be better but simple transparency for now
-        paddingTop: spacing.l,
-    },
-    captureButton: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: 'white',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    captureInner: {
-        width: 70,
-        height: 70,
-        borderRadius: 35,
-        borderWidth: 2,
-        borderColor: 'black',
-        backgroundColor: 'white',
-    },
-    galleryButton: {
-        width: 50,
-        height: 50,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        borderRadius: 25,
-    }
+    container: { flex: 1, backgroundColor: 'black' },
+    centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, backgroundColor: 'white' },
+    message: { fontSize: 16, textAlign: 'center', color: colors.text.secondary, marginVertical: 20, fontWeight: '600' },
+    grantButton: { backgroundColor: colors.primary, paddingHorizontal: 30, paddingVertical: 12, borderRadius: 15 },
+    grantButtonText: { color: 'white', fontWeight: '900' },
+    overlay: { flex: 1, justifyContent: 'space-between' },
+    topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10 },
+    iconBtn: { padding: 5 },
+    scanBadge: { overflow: 'hidden', borderRadius: 20 },
+    badgeBlur: { paddingHorizontal: 16, paddingVertical: 8 },
+    badgeText: { color: 'white', fontSize: 12, fontWeight: '900', letterSpacing: 2 },
+    bottomSection: { paddingBottom: 110 }, // Increased from 50 to sit above the floating tab bar
+    controlsRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', marginBottom: 20 },
+    sideBtn: { alignItems: 'center', width: 80 },
+    sideBtnText: { color: 'white', fontSize: 12, fontWeight: '800', marginTop: 4 },
+    captureBtn: { width: 90, height: 90, borderRadius: 45, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', borderWidth: 4, borderColor: 'white' },
+    captureInner: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' },
+    captureDot: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primary, opacity: 0.1 },
+    tipContainer: { alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20 },
+    tipText: { color: 'white', fontSize: 13, fontWeight: '700' }
 });

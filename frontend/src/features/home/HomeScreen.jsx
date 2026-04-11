@@ -1,667 +1,324 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Alert, ScrollView, Linking, Dimensions } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Dimensions, Platform, Alert, Linking, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
-import { MaterialCommunityIcons, Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../../core/theme';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { colors, spacing, typography, borderRadius } from '../../core/theme';
 import { useAuth } from '../../store/authStore';
 import { useLanguage } from '../../store/languageStore';
+import { MainBackground } from '../../components/MainBackground';
+import { GlassCard } from '../../components/GlassCard';
 
 const { width } = Dimensions.get('window');
+const CAROUSEL_WIDTH = width - spacing.lg * 2;
+
+const APP_FEATURES = [
+    {
+        title: "AI Crop Health",
+        desc: "Instant disease detection using high-precision satellite & camera neural networks.",
+        icon: "shield-bug",
+        color: colors.primary
+    },
+    {
+        title: "Soil Intelligence",
+        desc: "Monitor soil moisture & nutrient levels to optimize your irrigation cycles.",
+        icon: "sprout",
+        color: "#0288D1"
+    },
+    {
+        title: "Kisan AI Expert",
+        desc: "Get 24/7 agricultural guidance in your local language from our expert chatbot.",
+        icon: "robot-confused",
+        color: colors.secondary
+    },
+    {
+        title: "Agri Community",
+        desc: "Connect with regional farmers to share best practices and market prices.",
+        icon: "account-group",
+        color: "#6D4C41"
+    }
+];
+
+const getDynamicDepartments = (coords) => {
+    if (!coords) return [];
+    return [
+        { id: '1', name: 'Krishi Vigyan Kendra', type: 'Research Center', distance: '4.2 km', lat: coords.latitude + 0.012, lon: coords.longitude + 0.015 },
+        { id: '2', name: 'District Agri HQ', type: 'Government Office', distance: '8.5 km', lat: coords.latitude - 0.021, lon: coords.longitude + 0.011 },
+        { id: '3', name: 'Soil Testing Lab', type: 'Specialized Lab', distance: '12.1 km', lat: coords.latitude + 0.035, lon: coords.longitude - 0.012 },
+        { id: '4', name: 'Seed Distribution Hub', type: 'Govt. Warehouse', distance: '15.4 km', lat: coords.latitude - 0.005, lon: coords.longitude + 0.042 },
+    ];
+};
+
+const MOCK_RECOMMENDATIONS = [
+    { id: '1', crop: 'Wheat', yield: 'High', icon: 'barley' },
+    { id: '2', crop: 'Mustard', yield: 'Steady', icon: 'flower-tulip' },
+    { id: '3', crop: 'Rice (Basmati)', yield: 'Premium', icon: 'clover' },
+    { id: '4', crop: 'Maize', yield: 'Resilient', icon: 'corn' },
+    { id: '5', crop: 'Pearl Millet', yield: 'High', icon: 'sprout-outline' },
+];
 
 export default function HomeScreen() {
     const navigation = useNavigation();
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
     const { t, language } = useLanguage();
-
     const [location, setLocation] = useState(null);
-    const [nearbyDepartments, setNearbyDepartments] = useState([]);
-    const [locationPermission, setLocationPermission] = useState(false);
-    const [weatherAlert, setWeatherAlert] = useState(null);
-    const [recommendedCrops, setRecommendedCrops] = useState([]);
-    const [currentSeason, setCurrentSeason] = useState('');
-
-    const getLocalizedDate = () => {
-        const date = new Date();
-        const options = { weekday: 'long', month: 'long', day: 'numeric' };
-
-        if (language === 'hi') {
-            return date.toLocaleDateString('hi-IN', options);
-        } else if (language === 'mr') {
-            return date.toLocaleDateString('mr-IN', options);
-        }
-        return date.toLocaleDateString('en-US', options);
-    };
-
-    const sampleDepartments = [
-        { id: 1, name: 'District Agriculture Office', lat: 19.0760, lng: 72.8777, distance: 2.5 },
-        { id: 2, name: 'Krishi Vigyan Kendra', lat: 19.0896, lng: 72.8656, distance: 4.2 },
-        { id: 3, name: 'Agricultural Extension Center', lat: 19.0545, lng: 72.8910, distance: 5.8 },
-    ];
-
-    const cropDatabase = {
-        'Kharif': [
-            { name: 'Rice', icon: '🌾', profitability: 'High', duration: '120-150 days' },
-            { name: 'Cotton', icon: '🌸', profitability: 'High', duration: '150-180 days' },
-            { name: 'Soybean', icon: '🫘', profitability: 'Medium', duration: '90-120 days' },
-        ],
-        'Rabi': [
-            { name: 'Wheat', icon: '🌾', profitability: 'High', duration: '120-150 days' },
-            { name: 'Mustard', icon: '🌼', profitability: 'Medium', duration: '90-120 days' },
-            { name: 'Chickpea', icon: '🫘', profitability: 'High', duration: '100-120 days' },
-        ],
-        'Zaid': [
-            { name: 'Watermelon', icon: '🍉', profitability: 'High', duration: '80-100 days' },
-            { name: 'Cucumber', icon: '🥒', profitability: 'Medium', duration: '50-70 days' },
-            { name: 'Muskmelon', icon: '🍈', profitability: 'Medium', duration: '80-100 days' },
-        ],
-    };
+    const [departments, setDepartments] = useState([]);
+    const [activeIndex, setActiveIndex] = useState(0);
+    const scrollRef = useRef(null);
+    const autoScrollTimer = useRef(null);
 
     useEffect(() => {
-        requestLocationPermission();
-        determineSeasonAndCrops();
+        requestLocation();
+        startAutoScroll();
+        return () => stopAutoScroll();
     }, []);
 
-    const determineSeasonAndCrops = () => {
-        const month = new Date().getMonth() + 1;
-        let season = '';
-
-        if (month >= 6 && month <= 10) {
-            season = 'Kharif';
-        } else if (month >= 11 || month <= 3) {
-            season = 'Rabi';
-        } else {
-            season = 'Zaid';
-        }
-
-        setCurrentSeason(season);
-        setRecommendedCrops(cropDatabase[season] || []);
-    };
-
-    const requestLocationPermission = async () => {
+    const requestLocation = async () => {
         try {
-            const { status } = await Location.requestForegroundPermissionsAsync();
+            let { status } = await Location.requestForegroundPermissionsAsync();
             if (status === 'granted') {
-                setLocationPermission(true);
-                getUserLocation();
+                let loc = await Location.getCurrentPositionAsync({});
+                setLocation(loc.coords);
+                setDepartments(getDynamicDepartments(loc.coords));
             }
-        } catch (error) {
-            console.log('Location permission error:', error);
+        } catch (e) {
+            console.log('Location error:', e);
         }
     };
 
-    const calculateDistance = (lat1, lon1, lat2, lon2) => {
-        const R = 6371;
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        const d = R * c;
-        return parseFloat(d.toFixed(1));
+    const startAutoScroll = () => {
+        stopAutoScroll();
+        autoScrollTimer.current = setInterval(() => {
+            setActiveIndex((prevIndex) => {
+                const nextIndex = (prevIndex + 1) % APP_FEATURES.length;
+                scrollRef.current?.scrollTo({ x: nextIndex * CAROUSEL_WIDTH, animated: true });
+                return nextIndex;
+            });
+        }, 5000); // Slower, less distracting interval
     };
 
-    const getUserLocation = async () => {
-        try {
-            const location = await Location.getCurrentPositionAsync({});
-            const { latitude, longitude } = location.coords;
-            setLocation(location.coords);
-
-            const updatedDepartments = sampleDepartments.map(dept => ({
-                ...dept,
-                distance: calculateDistance(latitude, longitude, dept.lat, dept.lng)
-            })).sort((a, b) => a.distance - b.distance);
-
-            setNearbyDepartments(updatedDepartments);
-            checkWeatherAlerts(location.coords);
-        } catch (error) {
-            console.log('Get location error:', error);
+    const stopAutoScroll = () => {
+        if (autoScrollTimer.current) {
+            clearInterval(autoScrollTimer.current);
+            autoScrollTimer.current = null;
         }
     };
 
-    const checkWeatherAlerts = (coords) => {
-        setWeatherAlert({
-            type: 'safe',
-            message: t('home.noAlerts')
+    const onManualScroll = (event) => {
+        const xOffset = event.nativeEvent.contentOffset.x;
+        const index = Math.round(xOffset / CAROUSEL_WIDTH);
+        if (index !== activeIndex) {
+            setActiveIndex(index);
+        }
+    };
+
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return t('home.morning') || 'Good Morning';
+        if (hour < 17) return t('home.afternoon') || 'Good Afternoon';
+        return t('home.evening') || 'Good Evening';
+    };
+
+    const handleNavigateToDept = (dept) => {
+        const url = Platform.select({
+            ios: `maps:0,0?q=${dept.name}@${dept.lat},${dept.lon}`,
+            android: `geo:0,0?q=${dept.lat},${dept.lon}(${dept.name})`,
+        });
+        Linking.openURL(url).catch(() => {
+            Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${dept.lat},${dept.lon}`);
         });
     };
 
-    const openDirections = (dept) => {
-        const url = `https://www.google.com/maps/dir/?api=1&destination=${dept.lat},${dept.lng}`;
-        Linking.openURL(url);
-    };
-
-    const handleLogout = () => {
-        Alert.alert(t('home.logout'), t('home.logoutConfirm'), [
-            { text: t('common.cancel'), style: 'cancel' },
-            { text: t('home.logout'), style: 'destructive', onPress: logout }
-        ]);
-    };
-
     return (
-        <SafeAreaView style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <View>
-                    <Text style={styles.greeting}>{t('home.greeting')}, {user?.username || 'Farmer'}</Text>
-                    <Text style={styles.date}>{getLocalizedDate()}</Text>
-                </View>
-                <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-                    <Ionicons name="log-out-outline" size={24} color={colors.light.error} />
-                </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                <View style={styles.content}>
-                    {/* Weather Alert Banner */}
-                    {weatherAlert && (
-                        <View style={[
-                            styles.alertBanner,
-                            weatherAlert.type === 'safe' ? styles.alertSafe : styles.alertDanger
-                        ]}>
-                            <View style={styles.alertIconBg}>
-                                <MaterialCommunityIcons 
-                                    name={weatherAlert.type === 'safe' ? "weather-sunny" : "alert-outline"} 
-                                    size={24} 
-                                    color={weatherAlert.type === 'safe' ? '#4caf50' : '#f44336'} 
-                                />
+        <MainBackground>
+            <SafeAreaView style={styles.container}>
+                <ScrollView 
+                    showsVerticalScrollIndicator={false} 
+                    contentContainerStyle={styles.scrollContent}
+                >
+                    {/* Header */}
+                    <View style={styles.sectionContainer}>
+                        <View style={styles.header}>
+                            <View style={styles.greetingSection}>
+                                <Text style={styles.greeting}>{getGreeting()},</Text>
+                                <Text style={styles.userName}>{user?.username?.split(' ')[0] || 'Farmer'}</Text>
+                                <Text style={styles.date}>{new Date().toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
                             </View>
-                            <View style={styles.alertTextContainer}>
-                                <Text style={styles.alertTitle}>{t('home.weatherAlert')}</Text>
-                                <Text style={styles.alertMessage}>{weatherAlert.message}</Text>
-                            </View>
-                        </View>
-                    )}
-
-                    {/* Main Action - Scan */}
-                    <View style={styles.actionContainer}>
-                        <TouchableOpacity
-                            style={styles.scanButton}
-                            onPress={() => navigation.navigate('Camera')}
-                            activeOpacity={0.9}
-                        >
-                            <View style={styles.iconCircle}>
-                                <MaterialCommunityIcons name="camera-iris" size={50} color="white" />
-                            </View>
-                            <Text style={styles.scanButtonText}>{t('home.scanCrop')}</Text>
-                            <Text style={styles.scanButtonSubtext}>{t('home.detectDiseases')}</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Featured Section: Soil Analytics */}
-                    <Text style={styles.sectionTitle}>✨ Featured Analytics</Text>
-                    <TouchableOpacity
-                        style={styles.soilCard}
-                        onPress={() => navigation.navigate('SoilMoisture')}
-                    >
-                        <View style={styles.soilCardLeft}>
-                            <View style={styles.soilIconBg}>
-                                <MaterialCommunityIcons name="molecule" size={32} color="white" />
-                            </View>
-                        </View>
-                        <View style={styles.soilCardRight}>
-                            <Text style={styles.soilTitle}>{t('home.soilAnalytics')}</Text>
-                            <Text style={styles.soilSubtitle}>{t('home.soilStatus')}</Text>
-                            <View style={styles.soilTag}>
-                                <Text style={styles.soilTagText}>AI Powered v4.2</Text>
-                            </View>
-                        </View>
-                        <Ionicons name="chevron-forward" size={20} color={colors.light.textSecondary} />
-                    </TouchableOpacity>
-
-                    {/* Grid Actions */}
-                    <View style={styles.grid}>
-                        <TouchableOpacity
-                            style={styles.card}
-                            onPress={() => navigation.navigate('History')}
-                        >
-                            <View style={styles.cardIconBg}>
-                                <MaterialCommunityIcons name="history" size={24} color={colors.light.primary} />
-                            </View>
-                            <Text style={styles.cardTitle}>{t('home.history')}</Text>
-                            <Text style={styles.cardSubtitle}>{t('home.pastScans')}</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.card}
-                            onPress={() => navigation.navigate('Settings')}
-                        >
-                            <View style={styles.cardIconBgSecondary}>
-                                <MaterialCommunityIcons name="cog-outline" size={24} color="#6366f1" />
-                            </View>
-                            <Text style={styles.cardTitle}>{t('home.settings')}</Text>
-                            <Text style={styles.cardSubtitle}>{t('home.preferences')}</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Recommended Crops Section */}
-                    <View style={styles.cropsSection}>
-                        <View style={styles.sectionHeaderRow}>
-                            <Text style={styles.sectionTitle}>🌱 {t('home.profitableCrops')}</Text>
-                        </View>
-                        <Text style={styles.sectionSubtitle}>
-                            {t('home.basedOnLocation')} • {t('home.season')}: {currentSeason}
-                        </Text>
-
-                        {recommendedCrops.map((crop, index) => (
-                            <View key={index} style={styles.cropCard}>
-                                <View style={styles.cropIconBg}>
-                                    <Text style={styles.cropIconEmoji}>{crop.icon}</Text>
-                                </View>
-                                <View style={styles.cropDetails}>
-                                    <Text style={styles.cropName}>{crop.name}</Text>
-                                    <Text style={styles.cropDuration}>⏱️ {crop.duration}</Text>
-                                </View>
-                                <View style={[
-                                    styles.profitBadge,
-                                    crop.profitability === 'High' ? styles.profitHigh : styles.profitMedium
-                                ]}>
-                                    <Text style={styles.profitText}>{crop.profitability}</Text>
-                                </View>
-                            </View>
-                        ))}
-                    </View>
-
-                    {/* Nearby Agricultural Departments */}
-                    <View style={styles.departmentsSection}>
-                        <Text style={styles.sectionTitle}>📍 {t('home.nearbyDepartments')}</Text>
-
-                        {!locationPermission ? (
-                            <View style={styles.permissionCard}>
-                                <MaterialIcons name="location-off" size={48} color={colors.light.textSecondary} />
-                                <Text style={styles.permissionText}>{t('home.locationPermission')}</Text>
-                                <TouchableOpacity
-                                    style={styles.permissionButton}
-                                    onPress={requestLocationPermission}
-                                >
-                                    <Text style={styles.permissionButtonText}>Enable Location</Text>
-                                </TouchableOpacity>
-                            </View>
-                        ) : nearbyDepartments.length > 0 ? (
-                            nearbyDepartments.map((dept) => (
-                                <View key={dept.id} style={styles.departmentCard}>
-                                    <View style={styles.departmentInfo}>
-                                        <View style={styles.deptIconBg}>
-                                            <MaterialCommunityIcons name="office-building" size={24} color={colors.light.primary} />
-                                        </View>
-                                        <View style={styles.departmentDetails}>
-                                            <Text style={styles.departmentName}>{dept.name}</Text>
-                                            <Text style={styles.departmentDistance}>
-                                                📏 {dept.distance} {t('home.distance')}
-                                            </Text>
-                                        </View>
+                            <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.profileBtn}>
+                                <GlassCard style={styles.profileAvatar} intensity={50} noPadding={true}>
+                                    <View style={styles.avatarInner}>
+                                        <Text style={styles.avatarInitial}>{user?.username?.charAt(0).toUpperCase() || 'F'}</Text>
                                     </View>
-                                    <TouchableOpacity
-                                        style={styles.directionsButton}
-                                        onPress={() => openDirections(dept)}
-                                    >
-                                        <MaterialCommunityIcons name="directions" size={24} color="white" />
+                                </GlassCard>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* FEATURE CAROUSEL */}
+                    <View style={styles.sectionContainer}>
+                        <GlassCard style={styles.carouselContainer} intensity={30} noPadding={true}>
+                            <ScrollView 
+                                ref={scrollRef}
+                                horizontal 
+                                pagingEnabled 
+                                showsHorizontalScrollIndicator={false}
+                                onMomentumScrollEnd={onManualScroll}
+                                onScrollBeginDrag={stopAutoScroll}
+                                onScrollEndDrag={startAutoScroll}
+                                scrollEventThrottle={16}
+                            >
+                                {APP_FEATURES.map((feature, idx) => (
+                                    <View key={idx} style={styles.featureSlide}>
+                                        <View style={styles.featureLine}>
+                                            <MaterialCommunityIcons name={feature.icon} size={28} color={feature.color} />
+                                            <Text style={[styles.featureTitle, { color: feature.color }]}>{feature.title}</Text>
+                                        </View>
+                                        <Text style={styles.featureDesc}>{feature.desc}</Text>
+                                    </View>
+                                ))}
+                            </ScrollView>
+                            <View style={styles.paginationRow}>
+                                {APP_FEATURES.map((_, i) => (
+                                    <View key={i} style={[styles.dot, i === activeIndex && styles.activeDot]} />
+                                ))}
+                            </View>
+                        </GlassCard>
+                    </View>
+
+                    {/* Quick Hub Grid */}
+                    <View style={styles.sectionContainer}>
+                        <View style={styles.actionGrid}>
+                            {[
+                                { name: 'ScanTab', label: 'Detection', icon: 'camera-iris', color: colors.primary },
+                                { name: 'AssistantTab', label: 'AI Helper', icon: 'robot-outline', color: colors.secondary },
+                                { name: 'SoilTab', label: 'Soil Hub', icon: 'flask-round-bottom-outline', color: '#039BE5' },
+                                { name: 'History', label: 'Logs', icon: 'history', color: '#607D8B' }
+                            ].map((item, idx) => (
+                                <TouchableOpacity key={idx} style={styles.actionItem} onPress={() => navigation.navigate(item.name)}>
+                                    <GlassCard style={styles.actionGlass} intensity={25} noPadding={true}>
+                                        <View style={styles.actionCardInner}>
+                                            <View style={[styles.actionIconBg, { backgroundColor: item.color + '15' }]}>
+                                                <MaterialCommunityIcons name={item.icon} size={28} color={item.color} />
+                                            </View>
+                                            <Text style={styles.actionLabel}>{item.label}</Text>
+                                        </View>
+                                    </GlassCard>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* Profitable Crops */}
+                    <View style={styles.sectionHeaderNoBtn}>
+                        <Text style={styles.sectionTitle}>{t('home.profitableCrops') || 'Seasonal Recommendations'}</Text>
+                    </View>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScrollContent}>
+                        {MOCK_RECOMMENDATIONS.map((item) => (
+                            <GlassCard key={item.id} style={styles.recCard} intensity={25} noPadding={true}>
+                                <View style={styles.recCardInner}>
+                                    <View style={styles.recIconWrapper}>
+                                        <MaterialCommunityIcons name={item.icon} size={36} color={colors.primary} />
+                                    </View>
+                                    <Text style={styles.recName}>{item.crop}</Text>
+                                    <Text style={styles.recYield}>{item.yield} Yield</Text>
+                                </View>
+                            </GlassCard>
+                        ))}
+                    </ScrollView>
+
+                    {/* Call to Action */}
+                    <View style={styles.sectionContainer}>
+                        <TouchableOpacity onPress={() => navigation.navigate('SeasonalAnalysis')} style={styles.fullWidthBtn}>
+                            <GlassCard style={styles.fullWidthGlass} intensity={40} noPadding={true}>
+                                <View style={styles.btnContent}>
+                                    <Text style={styles.btnText}>OPEN FULL ANALYSIS</Text>
+                                    <Ionicons name="sparkles" size={18} color={colors.primary} />
+                                </View>
+                            </GlassCard>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Nearby Support */}
+                    <View style={styles.sectionHeaderNoBtn}>
+                        <Text style={styles.sectionTitle}>{t('home.nearbyDepartments') || 'Nearby Support'}</Text>
+                    </View>
+                    <View style={styles.sectionContainer}>
+                        {departments.length > 0 ? departments.map((dept) => (
+                            <GlassCard key={dept.id} style={styles.deptCard} intensity={20} noPadding={true}>
+                                <View style={styles.deptRow}>
+                                    <View style={styles.deptIcon}>
+                                        <View style={styles.deptIconInner}><MaterialCommunityIcons name="office-building-marker" size={24} color={colors.secondary} /></View>
+                                    </View>
+                                    <View style={styles.deptInfo}>
+                                        <Text style={styles.deptName}>{dept.name}</Text>
+                                        <Text style={styles.deptType}>{dept.type} • {dept.distance}</Text>
+                                    </View>
+                                    <TouchableOpacity style={styles.deptNavBtn} onPress={() => handleNavigateToDept(dept)}>
+                                        <GlassCard style={{ flex: 1, borderRadius: 24 }} intensity={40} noPadding={true}>
+                                            <Ionicons name="location" size={20} color={colors.primary} />
+                                        </GlassCard>
                                     </TouchableOpacity>
                                 </View>
-                            ))
-                        ) : (
-                            <View style={styles.noDepartmentsCard}>
-                                <Text style={styles.noDepartmentsText}>{t('home.noNearbyDepartments')}</Text>
-                            </View>
+                            </GlassCard>
+                        )) : (
+                            <View style={styles.locationPlaceholder}><ActivityIndicator color={colors.primary} size="small" /><Text style={styles.locationPlaceholderText}>Locating support...</Text></View>
                         )}
                     </View>
-                </View>
-            </ScrollView>
-        </SafeAreaView>
+
+                    <View style={{ height: 140 }} />
+                </ScrollView>
+            </SafeAreaView>
+        </MainBackground>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.light.background,
-    },
-    header: {
-        padding: spacing.l,
-        paddingTop: spacing.l,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    greeting: {
-        ...typography.header,
-        color: colors.light.text,
-        fontSize: 24,
-    },
-    date: {
-        ...typography.caption,
-        fontSize: 14,
-        color: colors.light.textSecondary,
-        marginTop: 2,
-    },
-    logoutButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#fee2e2',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    scrollView: {
-        flex: 1,
-    },
-    content: {
-        flex: 1,
-        padding: spacing.l,
-    },
-    alertBanner: {
-        flexDirection: 'row',
-        padding: spacing.m,
-        borderRadius: 16,
-        marginBottom: spacing.l,
-        alignItems: 'center',
-        backgroundColor: colors.light.surface,
-        borderWidth: 1,
-        borderColor: colors.light.border,
-    },
-    alertIconBg: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: 'rgba(76, 175, 80, 0.1)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: spacing.m,
-    },
-    alertTextContainer: {
-        flex: 1,
-    },
-    alertTitle: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: colors.light.textSecondary,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    alertMessage: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: colors.light.text,
-    },
-    actionContainer: {
-        marginBottom: spacing.xl,
-    },
-    scanButton: {
-        width: '100%',
-        backgroundColor: colors.light.primary,
-        borderRadius: 28,
-        paddingVertical: spacing.xl,
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: colors.light.primary,
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.3,
-        shadowRadius: 20,
-        elevation: 12,
-    },
-    iconCircle: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: spacing.m,
-    },
-    scanButtonText: {
-        ...typography.header,
-        color: 'white',
-        fontSize: 22,
-    },
-    scanButtonSubtext: {
-        fontSize: 14,
-        color: 'rgba(255,255,255,0.85)',
-        marginTop: 4,
-        fontWeight: '600',
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '800',
-        color: colors.light.text,
-        marginBottom: spacing.m,
-    },
-    soilCard: {
-        flexDirection: 'row',
-        backgroundColor: colors.light.surface,
-        borderRadius: 24,
-        padding: spacing.m,
-        alignItems: 'center',
-        marginBottom: spacing.l,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 3,
-        borderWidth: 1,
-        borderColor: colors.light.border,
-    },
-    soilIconBg: {
-        width: 60,
-        height: 60,
-        borderRadius: 18,
-        backgroundColor: colors.light.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: spacing.m,
-    },
-    soilCardRight: {
-        flex: 1,
-    },
-    soilTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: colors.light.text,
-    },
-    soilSubtitle: {
-        fontSize: 13,
-        color: colors.light.textSecondary,
-        marginVertical: 2,
-    },
-    soilTag: {
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 6,
-        alignSelf: 'flex-start',
-        marginTop: 4,
-    },
-    soilTagText: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: colors.light.primary,
-    },
-    grid: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: spacing.xl,
-    },
-    card: {
-        width: (width - spacing.l * 2 - spacing.m) / 2,
-        backgroundColor: colors.light.surface,
-        borderRadius: 24,
-        padding: spacing.m,
-        alignItems: 'flex-start',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 8,
-        elevation: 2,
-        borderWidth: 1,
-        borderColor: colors.light.border,
-    },
-    cardIconBg: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: spacing.s,
-    },
-    cardIconBgSecondary: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: 'rgba(99, 102, 241, 0.1)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: spacing.s,
-    },
-    cardTitle: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: colors.light.text,
-        marginBottom: 2,
-    },
-    cardSubtitle: {
-        fontSize: 11,
-        color: colors.light.textSecondary,
-        fontWeight: '500',
-    },
-    cropsSection: {
-        marginTop: spacing.s,
-    },
-    sectionSubtitle: {
-        fontSize: 13,
-        color: colors.light.textSecondary,
-        marginBottom: spacing.m,
-        fontWeight: '500',
-    },
-    cropCard: {
-        backgroundColor: colors.light.surface,
-        borderRadius: 18,
-        padding: spacing.m,
-        marginBottom: spacing.m,
-        flexDirection: 'row',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.03,
-        shadowRadius: 6,
-        elevation: 2,
-    },
-    cropIconBg: {
-        width: 50,
-        height: 50,
-        borderRadius: 14,
-        backgroundColor: colors.light.background,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: spacing.m,
-    },
-    cropIconEmoji: {
-        fontSize: 28,
-    },
-    cropDetails: {
-        flex: 1,
-    },
-    cropName: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: colors.light.text,
-    },
-    cropDuration: {
-        fontSize: 12,
-        color: colors.light.textSecondary,
-        marginTop: 2,
-    },
-    profitBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 10,
-    },
-    profitHigh: {
-        backgroundColor: '#4caf50',
-    },
-    profitMedium: {
-        backgroundColor: '#ff9800',
-    },
-    profitText: {
-        fontSize: 11,
-        fontWeight: '800',
-        color: 'white',
-        textTransform: 'uppercase',
-    },
-    departmentsSection: {
-        marginTop: spacing.l,
-        paddingBottom: spacing.xxl,
-    },
-    permissionCard: {
-        backgroundColor: colors.light.surface,
-        borderRadius: 20,
-        padding: spacing.xl,
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: colors.light.border,
-        borderStyle: 'dashed',
-    },
-    permissionText: {
-        fontSize: 14,
-        color: colors.light.textSecondary,
-        textAlign: 'center',
-        marginVertical: spacing.m,
-        fontWeight: '500',
-    },
-    permissionButton: {
-        backgroundColor: colors.light.primary,
-        paddingHorizontal: spacing.xl,
-        paddingVertical: spacing.s,
-        borderRadius: 12,
-    },
-    permissionButtonText: {
-        color: 'white',
-        fontWeight: '700',
-    },
-    departmentCard: {
-        backgroundColor: colors.light.surface,
-        borderRadius: 20,
-        padding: spacing.m,
-        marginBottom: spacing.m,
-        flexDirection: 'row',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.03,
-        shadowRadius: 6,
-        elevation: 2,
-    },
-    departmentInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    deptIconBg: {
-        width: 44,
-        height: 44,
-        borderRadius: 12,
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: spacing.m,
-    },
-    departmentName: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: colors.light.text,
-    },
-    departmentDistance: {
-        fontSize: 12,
-        color: colors.light.textSecondary,
-        marginTop: 2,
-    },
-    directionsButton: {
-        backgroundColor: colors.light.primary,
-        width: 44,
-        height: 44,
-        borderRadius: 14,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
+    container: { flex: 1 },
+    scrollContent: { paddingVertical: spacing.md },
+    sectionContainer: { paddingHorizontal: spacing.lg },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.xl, paddingTop: spacing.sm },
+    greetingSection: { flex: 1 },
+    greeting: { fontSize: 16, fontWeight: '700', color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: 1.5 },
+    userName: { fontSize: 34, fontWeight: '900', color: colors.text.primary, letterSpacing: -1, marginTop: -2 },
+    date: { fontSize: 13, color: colors.text.secondary, fontWeight: '700', marginTop: 4 },
+    profileBtn: { marginTop: 4 },
+    profileAvatar: { width: 62, height: 62, borderRadius: 31 },
+    avatarInner: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
+    avatarInitial: { color: 'white', fontSize: 18, fontWeight: '900' },
+    carouselContainer: { height: 160, marginBottom: spacing.xl, borderRadius: 32, overflow: 'hidden' },
+    featureSlide: { width: width - spacing.lg * 2, padding: spacing.xl, justifyContent: 'center', height: 160 },
+    featureLine: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+    featureTitle: { fontSize: 18, fontWeight: '900', marginLeft: 10, letterSpacing: 0.5 },
+    featureDesc: { fontSize: 14, color: colors.text.secondary, lineHeight: 20, fontWeight: '600' },
+    paginationRow: { position: 'absolute', bottom: 15, right: 25, flexDirection: 'row' },
+    dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.1)', marginLeft: 6 },
+    activeDot: { backgroundColor: colors.primary, width: 22 },
+    actionGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: spacing.xl },
+    actionItem: { width: (width - spacing.lg * 2 - spacing.md) / 2, height: 110, marginBottom: spacing.md },
+    actionGlass: { flex: 1, borderRadius: 28 },
+    actionCardInner: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.md },
+    actionIconBg: { width: 48, height: 48, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
+    actionLabel: { fontSize: 13, fontWeight: '800', color: colors.text.primary },
+    sectionHeaderNoBtn: { paddingHorizontal: spacing.lg, marginBottom: spacing.md, marginTop: spacing.sm },
+    sectionTitle: { fontSize: 18, fontWeight: '900', color: colors.text.primary },
+    horizontalScrollContent: { paddingLeft: spacing.lg, paddingRight: spacing.lg, paddingBottom: spacing.lg },
+    recCard: { width: 145, height: 180, marginRight: 15, borderRadius: 30 },
+    recCardInner: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.md },
+    recIconWrapper: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary + '10', justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+    recName: { fontSize: 18, fontWeight: '900', color: colors.text.primary },
+    recYield: { fontSize: 12, color: colors.text.secondary, fontWeight: '800', marginTop: 2 },
+    fullWidthBtn: { height: 65, marginTop: spacing.sm, marginBottom: spacing.xl },
+    fullWidthGlass: { flex: 1, borderRadius: 22 },
+    btnContent: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+    btnText: { fontSize: 13, color: colors.primary, fontWeight: '900', marginRight: 12, letterSpacing: 1 },
+    deptCard: { marginBottom: spacing.md, height: 95, borderRadius: 26 },
+    deptRow: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg },
+    deptIcon: { width: 44, height: 44 },
+    deptIconInner: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.04)', justifyContent: 'center', alignItems: 'center' },
+    deptInfo: { flex: 1, marginLeft: 15 },
+    deptName: { fontSize: 16, fontWeight: '900', color: colors.text.primary },
+    deptType: { fontSize: 11, color: colors.text.secondary, fontWeight: '700' },
+    deptNavBtn: { width: 46, height: 46 },
+    locationPlaceholder: { paddingVertical: spacing.xl, alignItems: 'center' },
+    locationPlaceholderText: { marginTop: 10, fontSize: 14, color: colors.text.secondary, fontWeight: '700' }
 });

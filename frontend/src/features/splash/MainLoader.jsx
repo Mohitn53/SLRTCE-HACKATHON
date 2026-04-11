@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
-import { colors, spacing } from '../../core/theme';
+import { colors, spacing, typography, borderRadius } from '../../core/theme';
+import { MainBackground } from '../../components/MainBackground';
+import { GlassCard } from '../../components/GlassCard';
 
 const { width, height } = Dimensions.get('window');
 
@@ -22,18 +24,11 @@ export default function MainLoader() {
                 useNativeDriver: true,
             }),
             Animated.loop(
-                Animated.sequence([
-                    Animated.timing(rotateAnim, {
-                        toValue: 1,
-                        duration: 3000,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(rotateAnim, {
-                        toValue: 0,
-                        duration: 0,
-                        useNativeDriver: true,
-                    })
-                ])
+                Animated.timing(rotateAnim, {
+                    toValue: 1,
+                    duration: 4000,
+                    useNativeDriver: true,
+                })
             ).start()
         ]).start();
     }, []);
@@ -44,40 +39,36 @@ export default function MainLoader() {
     });
 
     return (
-        <View style={styles.container}>
-            <Animated.View 
-                style={[
-                    styles.logoContainer, 
-                    { 
-                        opacity: fadeAnim,
-                        transform: [{ scale: scaleAnim }]
-                    }
-                ]}
-            >
-                <View style={styles.iconCircle}>
-                    <Text style={styles.logoEmoji}>🌾</Text>
-                    <Animated.View style={[styles.glow, { transform: [{ rotate: spin }] }]} />
-                </View>
-                
-                <Text style={styles.appName}>Kisaan Setu</Text>
-                <View style={styles.loaderBarContainer}>
-                    <Animated.View style={styles.loaderBar} />
-                </View>
-                <Text style={styles.loadingText}>Growing your future...</Text>
-            </Animated.View>
-
-            <View style={styles.bottomDecor}>
-                <View style={[styles.leaf, { left: -20, bottom: -10, transform: [{ rotate: '-15deg' }] }]} />
-                <View style={[styles.leaf, { right: -20, bottom: -10, transform: [{ rotate: '15deg' }] }]} />
+        <MainBackground>
+            <View style={styles.container}>
+                <Animated.View 
+                    style={[
+                        styles.logoContainer, 
+                        { 
+                            opacity: fadeAnim,
+                            transform: [{ scale: scaleAnim }]
+                        }
+                    ]}
+                >
+                    <GlassCard style={styles.iconCircle} intensity={40}>
+                        <Text style={styles.logoEmoji}>🌾</Text>
+                        <Animated.View style={[styles.glow, { transform: [{ rotate: spin }] }]} />
+                    </GlassCard>
+                    
+                    <Text style={styles.appName}>Kisaan Setu</Text>
+                    <View style={styles.loaderBarContainer}>
+                        <Animated.View style={styles.loaderBar} />
+                    </View>
+                    <Text style={styles.loadingText}>Cultivating Intelligence...</Text>
+                </Animated.View>
             </View>
-        </View>
+        </MainBackground>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.light.background,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -85,68 +76,53 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     iconCircle: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        backgroundColor: '#E8F5E9',
+        width: 140,
+        height: 140,
+        borderRadius: 70,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: spacing.l,
+        marginBottom: spacing.xl,
         position: 'relative',
+        padding: 0,
     },
     logoEmoji: {
-        fontSize: 60,
+        fontSize: 64,
         zIndex: 2,
     },
     glow: {
         position: 'absolute',
-        width: 140,
-        height: 140,
-        borderRadius: 70,
+        width: 160,
+        height: 160,
+        borderRadius: 80,
         borderWidth: 2,
-        borderColor: colors.light.primary,
+        borderColor: colors.primary,
         borderStyle: 'dashed',
-        opacity: 0.3,
+        opacity: 0.4,
     },
     appName: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: colors.light.primary,
-        letterSpacing: 1,
+        fontSize: 36,
+        fontWeight: '900',
+        color: colors.text.primary,
+        letterSpacing: -1,
     },
     loadingText: {
-        marginTop: spacing.m,
-        color: colors.light.textSecondary,
-        fontSize: 14,
-        fontStyle: 'italic',
+        marginTop: spacing.md,
+        color: colors.text.secondary,
+        fontSize: 16,
+        fontWeight: '600',
     },
     loaderBarContainer: {
-        width: 150,
-        height: 4,
-        backgroundColor: '#F1F1F1',
-        borderRadius: 2,
+        width: 200,
+        height: 6,
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        borderRadius: 3,
         marginTop: spacing.xl,
         overflow: 'hidden',
     },
     loaderBar: {
-        width: '40%',
+        width: '60%',
         height: '100%',
-        backgroundColor: colors.light.primary,
-        borderRadius: 2,
-    },
-    bottomDecor: {
-        position: 'absolute',
-        bottom: 0,
-        width: '100%',
-        height: 100,
-        overflow: 'hidden',
-    },
-    leaf: {
-        position: 'absolute',
-        width: 100,
-        height: 100,
-        backgroundColor: colors.light.primary,
-        opacity: 0.05,
-        borderRadius: 50,
+        backgroundColor: colors.primary,
+        borderRadius: 3,
     }
 });

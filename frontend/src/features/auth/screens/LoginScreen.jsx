@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { colors, spacing, typography } from '../../../core/theme';
+import { colors, spacing, typography, borderRadius } from '../../../core/theme';
 import { useAuth } from '../../../store/authStore';
 import { useLanguage } from '../../../store/languageStore';
+import { MainBackground } from '../../../components/MainBackground';
+import { GlassCard } from '../../../components/GlassCard';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function LoginScreen() {
     const navigation = useNavigation();
@@ -17,7 +22,7 @@ export default function LoginScreen() {
 
     const handleLogin = async () => {
         if (!username || !password) {
-            setError('Please fill in all fields');
+            setError('Please enter both username and password.');
             return;
         }
 
@@ -26,151 +31,214 @@ export default function LoginScreen() {
 
         try {
             await login(username, password);
-            // Navigation is handled by AppNavigator listening to auth state
         } catch (err) {
-            setError(err.response?.data?.message || 'Login failed. Please try again.');
+            setError('Authentication failed. Check your details.');
         } finally {
             setIsSubmitting(false);
         }
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1 }}
-            >
-                <ScrollView contentContainerStyle={styles.scrollContent}>
-                    <View style={styles.content}>
-                        <Text style={styles.title}>{t('auth.login')}</Text>
-                        <Text style={styles.subtitle}>{t('auth.loginButton')}</Text>
+        <MainBackground>
+            <SafeAreaView style={styles.container}>
+                <KeyboardAvoidingView 
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+                    style={styles.keyboardView}
+                >
+                    <ScrollView 
+                        contentContainerStyle={styles.scrollContent} 
+                        keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <View style={styles.innerContent}>
+                            {/* Branding Section */}
+                            <View style={styles.brandingContainer}>
+                                <GlassCard style={styles.brandIconGlass} intensity={20}>
+                                    <MaterialCommunityIcons name="leaf" size={60} color={colors.primary} />
+                                </GlassCard>
+                                <Text style={styles.appTitle}>Kisaan Setu</Text>
+                                <Text style={styles.appSubtitle}>Smart Agriculture Companion</Text>
+                            </View>
 
-                        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                            {/* Login Form */}
+                            <GlassCard style={styles.formCard} intensity={50}>
+                                <Text style={styles.formHeader}>{t('auth.login')}</Text>
+                                
+                                {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.label}>{t('auth.username')}</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder={t('auth.username')}
-                                placeholderTextColor={colors.light.textSecondary}
-                                value={username}
-                                onChangeText={setUsername}
-                                autoCapitalize="none"
-                            />
+                                <View style={styles.inputWrapper}>
+                                    <View style={styles.inputBox}>
+                                        <MaterialCommunityIcons name="account" size={20} color={colors.primary} style={styles.inputPrefix} />
+                                        <TextInput
+                                            style={styles.textInput}
+                                            placeholder={t('auth.username')}
+                                            placeholderTextColor={colors.text.secondary + '80'}
+                                            value={username}
+                                            onChangeText={setUsername}
+                                            autoCapitalize="none"
+                                        />
+                                    </View>
+
+                                    <View style={styles.inputBox}>
+                                        <MaterialCommunityIcons name="lock" size={20} color={colors.primary} style={styles.inputPrefix} />
+                                        <TextInput
+                                            style={styles.textInput}
+                                            placeholder={t('auth.password')}
+                                            placeholderTextColor={colors.text.secondary + '80'}
+                                            value={password}
+                                            onChangeText={setPassword}
+                                            secureTextEntry
+                                        />
+                                    </View>
+                                </View>
+
+                                <TouchableOpacity
+                                    style={[styles.primaryAction, isSubmitting && styles.actionDisabled]}
+                                    onPress={handleLogin}
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? (
+                                        <ActivityIndicator color="white" />
+                                    ) : (
+                                        <Text style={styles.actionLabel}>{t('auth.loginButton')}</Text>
+                                    )}
+                                </TouchableOpacity>
+
+                                <View style={styles.footerLinkRow}>
+                                    <Text style={styles.footerText}>Need an account?</Text>
+                                    <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                                        <Text style={styles.footerLink}> {t('auth.registerButton')}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </GlassCard>
                         </View>
-
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.label}>{t('auth.password')}</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder={t('auth.password')}
-                                placeholderTextColor={colors.light.textSecondary}
-                                value={password}
-                                onChangeText={setPassword}
-                                secureTextEntry
-                            />
-                        </View>
-
-                        <TouchableOpacity
-                            style={[styles.button, isSubmitting && styles.buttonDisabled]}
-                            onPress={handleLogin}
-                            disabled={isSubmitting}
-                        >
-                            {isSubmitting ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <Text style={styles.buttonText}>{t('auth.loginButton')}</Text>
-                            )}
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.button, styles.secondaryButton]}
-                            onPress={() => navigation.navigate('Register')}
-                        >
-                            <Text style={[styles.buttonText, styles.secondaryButtonText]}>{t('auth.registerButton')}</Text>
-                        </TouchableOpacity>
-                    </View>
-                </ScrollView>
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+                    </ScrollView>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        </MainBackground>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.light.background,
+    },
+    keyboardView: {
+        flex: 1,
     },
     scrollContent: {
         flexGrow: 1,
-    },
-    content: {
-        flex: 1,
-        padding: spacing.l,
         justifyContent: 'center',
+        paddingHorizontal: spacing.xl,
+        paddingBottom: spacing.xxl,
     },
-    title: {
-        ...typography.title,
-        color: colors.light.text,
-        marginBottom: spacing.s,
+    innerContent: {
+        width: '100%',
+        alignItems: 'center',
     },
-    subtitle: {
-        ...typography.body,
-        color: colors.light.textSecondary,
+    brandingContainer: {
+        alignItems: 'center',
+        marginBottom: spacing.xxl,
+        marginTop: spacing.xl,
+    },
+    brandIconGlass: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: spacing.lg,
+        padding: 0,
+        borderWidth: 2,
+        borderColor: 'rgba(255,255,255,0.3)',
+    },
+    appTitle: {
+        fontSize: 38,
+        fontWeight: '900',
+        color: colors.text.primary,
+        letterSpacing: -1,
+    },
+    appSubtitle: {
+        fontSize: 16,
+        color: colors.text.secondary,
+        fontWeight: '700',
+        opacity: 0.8,
+    },
+    formCard: {
+        width: '100%',
+        padding: spacing.xl,
+        borderRadius: 30,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
+    },
+    formHeader: {
+        fontSize: 26,
+        fontWeight: '800',
+        color: colors.text.primary,
+        marginBottom: spacing.xl,
+        textAlign: 'center',
+    },
+    inputWrapper: {
         marginBottom: spacing.xl,
     },
-    inputContainer: {
-        marginBottom: spacing.m,
-    },
-    label: {
-        ...typography.caption,
-        color: colors.light.text,
-        marginBottom: spacing.xs,
-        fontWeight: '600',
-    },
-    input: {
-        backgroundColor: colors.light.surface,
+    inputBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.5)',
+        borderRadius: 15,
+        paddingHorizontal: spacing.md,
+        marginBottom: spacing.md,
+        height: 60,
         borderWidth: 1,
-        borderColor: colors.light.border,
-        borderRadius: 12,
-        padding: spacing.m,
+        borderColor: 'rgba(255,255,255,0.3)',
+    },
+    inputPrefix: {
+        marginRight: spacing.sm,
+    },
+    textInput: {
+        flex: 1,
         fontSize: 16,
-        color: colors.light.text,
+        color: colors.text.primary,
+        fontWeight: '600',
     },
     errorText: {
-        color: colors.light.error,
-        marginBottom: spacing.m,
+        color: colors.error,
+        textAlign: 'center',
+        marginBottom: spacing.md,
+        fontWeight: '700',
         fontSize: 14,
     },
-    button: {
-        backgroundColor: colors.light.primary,
-        paddingVertical: spacing.m,
-        borderRadius: 12,
+    primaryAction: {
+        backgroundColor: colors.primary,
+        height: 60,
+        borderRadius: 15,
+        justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: spacing.m,
-        marginTop: spacing.s,
-        shadowColor: colors.light.primary,
-        shadowOffset: { width: 0, height: 4 },
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
+        shadowRadius: 15,
+        elevation: 8,
     },
-    buttonDisabled: {
-        opacity: 0.7,
+    actionDisabled: {
+        opacity: 0.6,
     },
-    buttonText: {
-        ...typography.subtitle,
-        color: '#fff',
+    actionLabel: {
+        color: 'white',
+        fontSize: 18,
+        fontWeight: '900',
+    },
+    footerLinkRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        marginTop: spacing.xl,
+    },
+    footerText: {
+        color: colors.text.secondary,
         fontWeight: '600',
     },
-    secondaryButton: {
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        borderColor: colors.light.primary,
-        elevation: 0,
-        marginTop: 0,
-    },
-    secondaryButtonText: {
-        color: colors.light.primary,
+    footerLink: {
+        color: colors.primary,
+        fontWeight: '900',
     }
 });

@@ -1,27 +1,27 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { colors, spacing, typography } from '../../../core/theme';
+import { colors, spacing, typography, borderRadius } from '../../../core/theme';
 import { useAuth } from '../../../store/authStore';
+import { useLanguage } from '../../../store/languageStore';
+import { MainBackground } from '../../../components/MainBackground';
+import { GlassCard } from '../../../components/GlassCard';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function RegisterScreen() {
     const navigation = useNavigation();
     const { register } = useAuth();
+    const { t } = useLanguage();
 
     const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
 
     const handleRegister = async () => {
-        if (!username || !password || !confirmPassword) {
-            setError('Please fill in all fields');
-            return;
-        }
-
-        if (password !== confirmPassword) {
-            setError('Passwords do not match');
+        if (!username || !email || !password) {
+            setError('Please fill in all the details.');
             return;
         }
 
@@ -29,163 +29,216 @@ export default function RegisterScreen() {
         setError('');
 
         try {
-            await register(username, password);
-            // Navigation handled by auth state
+            await register(username, email, password);
         } catch (err) {
-            setError(err.response?.data?.message || 'Registration failed. Please try again.');
+            setError(err.response?.data?.message || 'Registration failed.');
         } finally {
             setIsSubmitting(false);
         }
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1 }}
-            >
-                <ScrollView contentContainerStyle={styles.scrollContent}>
-                    <View style={styles.content}>
-                        <Text style={styles.title}>Create Account</Text>
-                        <Text style={styles.subtitle}>Join us to protect your crops</Text>
+        <MainBackground>
+            <SafeAreaView style={styles.container}>
+                <KeyboardAvoidingView 
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+                    style={styles.keyboardView}
+                >
+                    <ScrollView 
+                        contentContainerStyle={styles.scrollContent} 
+                        keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <View style={styles.innerContent}>
+                            <View style={styles.brandingContainer}>
+                                <GlassCard style={styles.brandIconGlass} intensity={20}>
+                                    <MaterialCommunityIcons name="spa" size={50} color={colors.primary} />
+                                </GlassCard>
+                                <Text style={styles.appTitle}>Create Account</Text>
+                                <Text style={styles.appSubtitle}>Start your smart farming journey</Text>
+                            </View>
 
-                        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                            <GlassCard style={styles.formCard} intensity={50}>
+                                <Text style={styles.formHeader}>{t('auth.register')}</Text>
+                                
+                                {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.label}>Username</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Choose a username"
-                                placeholderTextColor={colors.light.textSecondary}
-                                value={username}
-                                onChangeText={setUsername}
-                                autoCapitalize="none"
-                            />
+                                <View style={styles.inputWrapper}>
+                                    <View style={styles.inputBox}>
+                                        <MaterialCommunityIcons name="account" size={20} color={colors.primary} style={styles.inputPrefix} />
+                                        <TextInput
+                                            style={styles.textInput}
+                                            placeholder={t('auth.username')}
+                                            placeholderTextColor={colors.text.secondary + '80'}
+                                            value={username}
+                                            onChangeText={setUsername}
+                                            autoCapitalize="none"
+                                        />
+                                    </View>
+
+                                    <View style={styles.inputBox}>
+                                        <MaterialCommunityIcons name="email" size={20} color={colors.primary} style={styles.inputPrefix} />
+                                        <TextInput
+                                            style={styles.textInput}
+                                            placeholder={t('auth.email')}
+                                            placeholderTextColor={colors.text.secondary + '80'}
+                                            value={email}
+                                            onChangeText={setEmail}
+                                            autoCapitalize="none"
+                                            keyboardType="email-address"
+                                        />
+                                    </View>
+
+                                    <View style={styles.inputBox}>
+                                        <MaterialCommunityIcons name="lock" size={20} color={colors.primary} style={styles.inputPrefix} />
+                                        <TextInput
+                                            style={styles.textInput}
+                                            placeholder={t('auth.password')}
+                                            placeholderTextColor={colors.text.secondary + '80'}
+                                            value={password}
+                                            onChangeText={setPassword}
+                                            secureTextEntry
+                                        />
+                                    </View>
+                                </View>
+
+                                <TouchableOpacity
+                                    style={[styles.primaryAction, isSubmitting && styles.actionDisabled]}
+                                    onPress={handleRegister}
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? (
+                                        <ActivityIndicator color="white" />
+                                    ) : (
+                                        <Text style={styles.actionLabel}>{t('auth.registerButton')}</Text>
+                                    )}
+                                </TouchableOpacity>
+
+                                <View style={styles.footerLinkRow}>
+                                    <Text style={styles.footerText}>Already have an account?</Text>
+                                    <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                                        <Text style={styles.footerLink}> {t('auth.loginButton')}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </GlassCard>
                         </View>
-
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.label}>Password</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Choose a password"
-                                placeholderTextColor={colors.light.textSecondary}
-                                value={password}
-                                onChangeText={setPassword}
-                                secureTextEntry
-                            />
-                        </View>
-
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.label}>Confirm Password</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Confirm your password"
-                                placeholderTextColor={colors.light.textSecondary}
-                                value={confirmPassword}
-                                onChangeText={setConfirmPassword}
-                                secureTextEntry
-                            />
-                        </View>
-
-                        <TouchableOpacity
-                            style={[styles.button, isSubmitting && styles.buttonDisabled]}
-                            onPress={handleRegister}
-                            disabled={isSubmitting}
-                        >
-                            {isSubmitting ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <Text style={styles.buttonText}>Sign Up</Text>
-                            )}
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.linkButton}
-                            onPress={() => navigation.goBack()}
-                        >
-                            <Text style={styles.linkText}>Already have an account? Login</Text>
-                        </TouchableOpacity>
-                    </View>
-                </ScrollView>
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+                    </ScrollView>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        </MainBackground>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.light.background,
-    },
+    container: { flex: 1 },
+    keyboardView: { flex: 1 },
     scrollContent: {
         flexGrow: 1,
-    },
-    content: {
-        flex: 1,
-        padding: spacing.l,
         justifyContent: 'center',
+        paddingHorizontal: spacing.xl,
+        paddingBottom: spacing.xxl,
     },
-    title: {
-        ...typography.title,
-        color: colors.light.text,
-        marginBottom: spacing.s,
+    innerContent: {
+        width: '100%',
+        alignItems: 'center',
     },
-    subtitle: {
-        ...typography.body,
-        color: colors.light.textSecondary,
+    brandingContainer: {
+        alignItems: 'center',
         marginBottom: spacing.xl,
+        marginTop: spacing.xl,
     },
-    inputContainer: {
-        marginBottom: spacing.m,
+    brandIconGlass: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: spacing.md,
+        padding: 0,
+        borderWidth: 2,
+        borderColor: 'rgba(255,255,255,0.3)',
     },
-    label: {
-        ...typography.caption,
-        color: colors.light.text,
-        marginBottom: spacing.xs,
-        fontWeight: '600',
+    appTitle: {
+        fontSize: 32,
+        fontWeight: '900',
+        color: colors.text.primary,
+        letterSpacing: -1,
     },
-    input: {
-        backgroundColor: colors.light.surface,
+    appSubtitle: {
+        fontSize: 14,
+        color: colors.text.secondary,
+        fontWeight: '700',
+        opacity: 0.8,
+    },
+    formCard: {
+        width: '100%',
+        padding: spacing.xl,
+        borderRadius: 30,
         borderWidth: 1,
-        borderColor: colors.light.border,
-        borderRadius: 12,
-        padding: spacing.m,
+        borderColor: 'rgba(255,255,255,0.2)',
+    },
+    formHeader: {
+        fontSize: 24,
+        fontWeight: '800',
+        color: colors.text.primary,
+        marginBottom: spacing.xl,
+        textAlign: 'center',
+    },
+    inputWrapper: { marginBottom: spacing.xl },
+    inputBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.5)',
+        borderRadius: 15,
+        paddingHorizontal: spacing.md,
+        marginBottom: spacing.md,
+        height: 60,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.3)',
+    },
+    inputPrefix: { marginRight: spacing.sm },
+    textInput: {
+        flex: 1,
         fontSize: 16,
-        color: colors.light.text,
+        color: colors.text.primary,
+        fontWeight: '600',
     },
     errorText: {
-        color: colors.light.error,
-        marginBottom: spacing.m,
-        fontSize: 14,
+        color: colors.error,
+        textAlign: 'center',
+        marginBottom: spacing.md,
+        fontWeight: '700',
+        fontSize: 13,
     },
-    button: {
-        backgroundColor: colors.light.primary,
-        paddingVertical: spacing.m,
-        borderRadius: 12,
+    primaryAction: {
+        backgroundColor: colors.primary,
+        height: 60,
+        borderRadius: 15,
+        justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: spacing.m,
-        marginTop: spacing.s,
-        shadowColor: colors.light.primary,
-        shadowOffset: { width: 0, height: 4 },
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
+        shadowRadius: 15,
+        elevation: 8,
     },
-    buttonDisabled: {
-        opacity: 0.7,
+    actionDisabled: { opacity: 0.6 },
+    actionLabel: {
+        color: 'white',
+        fontSize: 18,
+        fontWeight: '900',
     },
-    buttonText: {
-        ...typography.subtitle,
-        color: '#fff',
+    footerLinkRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        marginTop: spacing.xl,
+    },
+    footerText: {
+        color: colors.text.secondary,
         fontWeight: '600',
     },
-    linkButton: {
-        alignItems: 'center',
-        padding: spacing.m,
-    },
-    linkText: {
-        color: colors.light.primary,
-        fontSize: 14,
-        fontWeight: '600',
+    footerLink: {
+        color: colors.primary,
+        fontWeight: '900',
     }
 });

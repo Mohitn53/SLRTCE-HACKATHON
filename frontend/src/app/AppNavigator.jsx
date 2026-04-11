@@ -1,105 +1,96 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { StyleSheet, View, Platform, Dimensions } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View, ActivityIndicator } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import SplashScreen from '../features/splash/SplashScreen';
-import KisanSetuSplashScreen from '../features/splash/KisanSetuSplashScreen';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+
+import { colors, spacing } from '../core/theme';
+import { useAuth } from '../store/authStore';
+
+// Screens
+import HomeScreen from '../features/home/HomeScreen';
+import CameraScreen from '../features/camera/CameraScreen';
+import SoilMoistureScreen from '../features/soil/SoilMoistureScreen';
+import CommunityFeedScreen from '../features/community/screens/CommunityFeedScreen';
+import ChatbotScreen from '../features/chatbot/screens/ChatbotScreen';
+
 import LoginScreen from '../features/auth/screens/LoginScreen';
 import RegisterScreen from '../features/auth/screens/RegisterScreen';
-import CameraScreen from '../features/camera/CameraScreen';
 import DetectionScreen from '../features/detection/DetectionScreen';
 import HistoryScreen from '../features/history/HistoryScreen';
-import HomeScreen from '../features/home/HomeScreen';
 import SettingsScreen from '../features/settings/SettingsScreen';
-import SoilMoistureScreen from '../features/soil/SoilMoistureScreen';
-import { colors } from '../core/theme';
-import { useAuth } from '../store/authStore';
-import { useLanguage } from '../store/languageStore';
-
+import SeasonalAnalysisScreen from '../features/home/SeasonalAnalysisScreen';
 import MainLoader from '../features/splash/MainLoader';
 
+const { width } = Dimensions.get('window');
 const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
+
+const TabNavigator = () => (
+    <Tab.Navigator
+        screenOptions={({ route }) => ({
+            headerShown: false,
+            tabBarIcon: ({ focused }) => {
+                let iconName;
+                if (route.name === 'HomeTab') iconName = 'home-variant';
+                else if (route.name === 'ScanTab') iconName = 'camera-iris';
+                else if (route.name === 'SoilTab') iconName = 'leaf';
+                else if (route.name === 'CommunityTab') iconName = 'account-group';
+                else if (route.name === 'AssistantTab') iconName = 'robot-happy';
+
+                return (
+                    <View style={styles.tabIconWrapper}>
+                        <MaterialCommunityIcons 
+                            name={iconName} 
+                            size={focused ? 32 : 28} 
+                            color={focused ? colors.primary : 'rgba(0,0,0,0.4)'} 
+                        />
+                        {focused && <View style={styles.tabActiveIndicator} />}
+                    </View>
+                );
+            },
+            tabBarActiveTintColor: colors.primary,
+            tabBarInactiveTintColor: 'rgba(0,0,0,0.4)',
+            tabBarStyle: styles.tabBar,
+            tabBarBackground: () => (
+                <View style={styles.tabBgContainer}>
+                    <BlurView 
+                        intensity={95} 
+                        tint="light" 
+                        style={StyleSheet.absoluteFill} 
+                    />
+                </View>
+            ),
+            tabBarShowLabel: false,
+        })}
+    >
+        <Tab.Screen name="HomeTab" component={HomeScreen} />
+        <Tab.Screen name="ScanTab" component={CameraScreen} />
+        <Tab.Screen name="SoilTab" component={SoilMoistureScreen} />
+        <Tab.Screen name="CommunityTab" component={CommunityFeedScreen} />
+        <Tab.Screen name="AssistantTab" component={ChatbotScreen} />
+    </Tab.Navigator>
+);
 
 export default function AppNavigator() {
-    const { token, isLoading: authLoading } = useAuth();
-    const { isLoading: langLoading } = useLanguage();
-    const [hasSeenSplash, setHasSeenSplash] = useState(false);
-    const [checkingSplash, setCheckingSplash] = useState(true);
+    const { token, isLoading } = useAuth();
 
-    // Check if user has seen the main language/intro splash
-    const [hasSeenKisanSplash, setHasSeenKisanSplash] = useState(false);
-    const [checkingKisanSplash, setCheckingKisanSplash] = useState(true);
-
-    useEffect(() => {
-        initializeApp();
-    }, []);
-
-    const initializeApp = async () => {
-        try {
-            // Check both splash statuses in parallel
-            const [kisanSeen, splashSeen] = await Promise.all([
-                AsyncStorage.getItem('has_seen_kisan_splash'),
-                AsyncStorage.getItem('has_seen_splash')
-            ]);
-
-            setHasSeenKisanSplash(kisanSeen === 'true');
-            setHasSeenSplash(splashSeen === 'true');
-        } catch (error) {
-            console.error('Error initializing app:', error);
-        } finally {
-            // Give the user time to appreciate the premium MainLoader
-            setTimeout(() => {
-                setCheckingKisanSplash(false);
-                setCheckingSplash(false);
-            }, 2500);
-        }
-    };
-
-
-    if (authLoading || langLoading || checkingSplash || checkingKisanSplash) {
-        return <MainLoader />;
-    }
+    if (isLoading) return <MainLoader />;
 
     return (
         <NavigationContainer>
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-                {!hasSeenKisanSplash ? (
-                    // Kisan Setu Splash (First time - language and intro)
-                    <Stack.Screen
-                        name="KisanSetuSplash"
-                        component={KisanSetuSplashScreen}
-                        listeners={{
-                            focus: async () => {
-                                await AsyncStorage.setItem('has_seen_kisan_splash', 'true');
-                                setHasSeenKisanSplash(true);
-                            }
-                        }}
-                    />
-                ) : !hasSeenSplash ? (
-                    // Original Splash Screen (shown once after Kisan)
-                    <Stack.Screen
-                        name="Splash"
-                        component={SplashScreen}
-                        listeners={{
-                            focus: async () => {
-                                await AsyncStorage.setItem('has_seen_splash', 'true');
-                                setHasSeenSplash(true);
-                            }
-                        }}
-                    />
-                ) : token ? (
-                    // Authenticated Stack
+            <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
+                {token ? (
                     <>
-                        <Stack.Screen name="Home" component={HomeScreen} />
-                        <Stack.Screen name="Camera" component={CameraScreen} />
+                        <Stack.Screen name="Main" component={TabNavigator} />
                         <Stack.Screen name="Detection" component={DetectionScreen} />
-                        <Stack.Screen name="SoilMoisture" component={SoilMoistureScreen} />
                         <Stack.Screen name="History" component={HistoryScreen} />
                         <Stack.Screen name="Settings" component={SettingsScreen} />
+                        <Stack.Screen name="SeasonalAnalysis" component={SeasonalAnalysisScreen} />
                     </>
                 ) : (
-                    // Auth Stack
                     <>
                         <Stack.Screen name="Login" component={LoginScreen} />
                         <Stack.Screen name="Register" component={RegisterScreen} />
@@ -109,3 +100,44 @@ export default function AppNavigator() {
         </NavigationContainer>
     );
 }
+
+const styles = StyleSheet.create({
+    tabBar: {
+        position: 'absolute',
+        bottom: 25,
+        left: 20,
+        right: 20,
+        height: 75,
+        backgroundColor: 'transparent',
+        borderTopWidth: 0,
+        elevation: 0,
+        paddingBottom: 0, // Ensure no padding pushes icons up
+    },
+    tabBgContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        borderRadius: 38,
+        overflow: 'hidden',
+        borderWidth: 1.5,
+        borderColor: 'rgba(255,255,255,0.7)',
+        backgroundColor: 'rgba(255,255,255,0.4)',
+    },
+    tabIconWrapper: {
+        width: 60,
+        height: 75, // Match tab bar height exactly
+        alignItems: 'center',
+        justifyContent: 'center', // Vertically center the icon
+        paddingTop: 10, // Slight offset to leave room for the dot at bottom
+    },
+    tabActiveIndicator: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: colors.primary,
+        position: 'absolute',
+        bottom: 12, // Precisely placed at the bottom of the bar
+    }
+});
