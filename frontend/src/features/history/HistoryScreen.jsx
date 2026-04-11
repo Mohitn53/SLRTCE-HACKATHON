@@ -7,8 +7,11 @@ import { useAuth } from '../../store/authStore';
 import { MainBackground } from '../../components/MainBackground';
 import { GlassCard } from '../../components/GlassCard';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '../../store/languageStore';
 
 export default function HistoryScreen() {
+    const { t } = useLanguage();
+
     const navigation = useNavigation();
     const { user } = useAuth();
     const [history, setHistory] = useState([]);

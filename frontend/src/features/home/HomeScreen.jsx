@@ -12,49 +12,66 @@ import { GlassCard } from '../../components/GlassCard';
 const { width } = Dimensions.get('window');
 const CAROUSEL_WIDTH = width - spacing.lg * 2;
 
-const APP_FEATURES = [
+const getActionLabel = (t, label) => {
+    switch(label) {
+        case 'Detection': return t('home.actionDetection') === 'home.actionDetection' ? 'Detection' : t('home.actionDetection');
+        case 'AI Helper': return t('home.actionAiHelper') === 'home.actionAiHelper' ? 'AI Helper' : t('home.actionAiHelper');
+        case 'Soil Hub': return t('home.actionSoilHub') === 'home.actionSoilHub' ? 'Soil Hub' : t('home.actionSoilHub');
+        case 'Logs': return t('home.actionLogs') === 'home.actionLogs' ? 'Logs' : t('home.actionLogs');
+        default: return label;
+    }
+};
+
+const getTargetDepString = (t, key, fallback) => {
+    const val = t(`home.${key}`);
+    return val === `home.${key}` ? fallback : val;
+};
+
+
+const getAppFeatures = (t) => [
     {
-        title: "AI Crop Health",
-        desc: "Instant disease detection using high-precision satellite & camera neural networks.",
+        title: t('home.feature1Title') === 'home.feature1Title' ? "AI Crop Health" : t('home.feature1Title'),
+        desc: t('home.feature1Desc') === 'home.feature1Desc' ? "Instant disease detection using high-precision satellite & camera neural networks." : t('home.feature1Desc'),
         icon: "shield-bug",
         color: colors.primary
     },
     {
-        title: "Soil Intelligence",
-        desc: "Monitor soil moisture & nutrient levels to optimize your irrigation cycles.",
+        title: t('home.feature2Title') === 'home.feature2Title' ? "Soil Intelligence" : t('home.feature2Title'),
+        desc: t('home.feature2Desc') === 'home.feature2Desc' ? "Monitor soil moisture & nutrient levels to optimize your irrigation cycles." : t('home.feature2Desc'),
         icon: "sprout",
         color: "#0288D1"
     },
     {
-        title: "Kisan AI Expert",
-        desc: "Get 24/7 agricultural guidance in your local language from our expert chatbot.",
+        title: t('home.feature3Title') === 'home.feature3Title' ? "Kisan AI Expert" : t('home.feature3Title'),
+        desc: t('home.feature3Desc') === 'home.feature3Desc' ? "Get 24/7 agricultural guidance in your local language from our expert chatbot." : t('home.feature3Desc'),
         icon: "robot-confused",
         color: colors.secondary
     },
     {
-        title: "Agri Community",
-        desc: "Connect with regional farmers to share best practices and market prices.",
+        title: t('home.feature4Title') === 'home.feature4Title' ? "Agri Community" : t('home.feature4Title'),
+        desc: t('home.feature4Desc') === 'home.feature4Desc' ? "Connect with regional farmers to share best practices and market prices." : t('home.feature4Desc'),
         icon: "account-group",
         color: "#6D4C41"
     }
 ];
 
-const getDynamicDepartments = (coords) => {
+
+const getDynamicDepartments = (coords, t) => {
     if (!coords) return [];
     return [
-        { id: '1', name: 'Krishi Vigyan Kendra', type: 'Research Center', distance: '4.2 km', lat: coords.latitude + 0.012, lon: coords.longitude + 0.015 },
-        { id: '2', name: 'District Agri HQ', type: 'Government Office', distance: '8.5 km', lat: coords.latitude - 0.021, lon: coords.longitude + 0.011 },
-        { id: '3', name: 'Soil Testing Lab', type: 'Specialized Lab', distance: '12.1 km', lat: coords.latitude + 0.035, lon: coords.longitude - 0.012 },
-        { id: '4', name: 'Seed Distribution Hub', type: 'Govt. Warehouse', distance: '15.4 km', lat: coords.latitude - 0.005, lon: coords.longitude + 0.042 },
+        { id: '1', name: t('home.deptKVK') === 'home.deptKVK' ? 'Krishi Vigyan Kendra' : t('home.deptKVK'), type: t('home.typeResearchCenter') === 'home.typeResearchCenter' ? 'Research Center' : t('home.typeResearchCenter'), distance: '4.2 km', lat: coords.latitude + 0.012, lon: coords.longitude + 0.015 },
+        { id: '2', name: t('home.deptHQ') === 'home.deptHQ' ? 'District Agri HQ' : t('home.deptHQ'), type: t('home.typeGovtOffice') === 'home.typeGovtOffice' ? 'Government Office' : t('home.typeGovtOffice'), distance: '8.5 km', lat: coords.latitude - 0.021, lon: coords.longitude + 0.011 },
+        { id: '3', name: t('home.deptSoil') === 'home.deptSoil' ? 'Soil Testing Lab' : t('home.deptSoil'), type: t('home.typeSpecialized') === 'home.typeSpecialized' ? 'Specialized Lab' : t('home.typeSpecialized'), distance: '12.1 km', lat: coords.latitude + 0.035, lon: coords.longitude - 0.012 },
+        { id: '4', name: t('home.deptSeed') === 'home.deptSeed' ? 'Seed Distribution Hub' : t('home.deptSeed'), type: t('home.typeWarehouse') === 'home.typeWarehouse' ? 'Govt. Warehouse' : t('home.typeWarehouse'), distance: '15.4 km', lat: coords.latitude - 0.005, lon: coords.longitude + 0.042 },
     ];
 };
 
-const MOCK_RECOMMENDATIONS = [
-    { id: '1', crop: 'Wheat', yield: 'High', icon: 'barley' },
-    { id: '2', crop: 'Mustard', yield: 'Steady', icon: 'flower-tulip' },
-    { id: '3', crop: 'Rice (Basmati)', yield: 'Premium', icon: 'clover' },
-    { id: '4', crop: 'Maize', yield: 'Resilient', icon: 'corn' },
-    { id: '5', crop: 'Pearl Millet', yield: 'High', icon: 'sprout-outline' },
+const getMockRecommendations = (t) => [
+    { id: '1', crop: t('home.cropWheat') === 'home.cropWheat' ? 'Wheat' : t('home.cropWheat'), yield: t('home.yieldHigh') === 'home.yieldHigh' ? 'High' : t('home.yieldHigh'), icon: 'barley' },
+    { id: '2', crop: t('home.cropMustard') === 'home.cropMustard' ? 'Mustard' : t('home.cropMustard'), yield: t('home.yieldSteady') === 'home.yieldSteady' ? 'Steady' : t('home.yieldSteady'), icon: 'flower-tulip' },
+    { id: '3', crop: t('home.cropRice') === 'home.cropRice' ? 'Rice (Basmati)' : t('home.cropRice'), yield: t('home.yieldPremium') === 'home.yieldPremium' ? 'Premium' : t('home.yieldPremium'), icon: 'clover' },
+    { id: '4', crop: t('home.cropMaize') === 'home.cropMaize' ? 'Maize' : t('home.cropMaize'), yield: t('home.yieldResilient') === 'home.yieldResilient' ? 'Resilient' : t('home.yieldResilient'), icon: 'corn' },
+    { id: '5', crop: t('home.cropPearlMillet') === 'home.cropPearlMillet' ? 'Pearl Millet' : t('home.cropPearlMillet'), yield: t('home.yieldHigh') === 'home.yieldHigh' ? 'High' : t('home.yieldHigh'), icon: 'sprout-outline' },
 ];
 
 export default function HomeScreen() {
@@ -79,7 +96,7 @@ export default function HomeScreen() {
             if (status === 'granted') {
                 let loc = await Location.getCurrentPositionAsync({});
                 setLocation(loc.coords);
-                setDepartments(getDynamicDepartments(loc.coords));
+                setDepartments(getDynamicDepartments(loc.coords, t));
             }
         } catch (e) {
             console.log('Location error:', e);
@@ -90,7 +107,7 @@ export default function HomeScreen() {
         stopAutoScroll();
         autoScrollTimer.current = setInterval(() => {
             setActiveIndex((prevIndex) => {
-                const nextIndex = (prevIndex + 1) % APP_FEATURES.length;
+                const nextIndex = (prevIndex + 1) % getAppFeatures(t).length;
                 scrollRef.current?.scrollTo({ x: nextIndex * CAROUSEL_WIDTH, animated: true });
                 return nextIndex;
             });
@@ -114,9 +131,9 @@ export default function HomeScreen() {
 
     const getGreeting = () => {
         const hour = new Date().getHours();
-        if (hour < 12) return t('home.morning') || 'Good Morning';
-        if (hour < 17) return t('home.afternoon') || 'Good Afternoon';
-        return t('home.evening') || 'Good Evening';
+        if (hour < 12) return t('home.morning') === 'home.morning' ? 'Good Morning' : t('home.morning');
+        if (hour < 17) return t('home.afternoon') === 'home.afternoon' ? 'Good Afternoon' : t('home.afternoon');
+        return t('home.evening') === 'home.evening' ? 'Good Evening' : t('home.evening');
     };
 
     const handleNavigateToDept = (dept) => {
@@ -141,7 +158,7 @@ export default function HomeScreen() {
                         <View style={styles.header}>
                             <View style={styles.greetingSection}>
                                 <Text style={styles.greeting}>{getGreeting()},</Text>
-                                <Text style={styles.userName}>{user?.username?.split(' ')[0] || 'Farmer'}</Text>
+                                <Text style={styles.userName}>{user?.username?.split(' ')[0] || (t("home.farmer") === "home.farmer" ? "Farmer" : t("home.farmer"))}</Text>
                                 <Text style={styles.date}>{new Date().toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
                             </View>
                             <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.profileBtn}>
@@ -167,7 +184,7 @@ export default function HomeScreen() {
                                 onScrollEndDrag={startAutoScroll}
                                 scrollEventThrottle={16}
                             >
-                                {APP_FEATURES.map((feature, idx) => (
+                                {getAppFeatures(t).map((feature, idx) => (
                                     <View key={idx} style={styles.featureSlide}>
                                         <View style={styles.featureLine}>
                                             <MaterialCommunityIcons name={feature.icon} size={28} color={feature.color} />
@@ -178,7 +195,7 @@ export default function HomeScreen() {
                                 ))}
                             </ScrollView>
                             <View style={styles.paginationRow}>
-                                {APP_FEATURES.map((_, i) => (
+                                {getAppFeatures(t).map((_, i) => (
                                     <View key={i} style={[styles.dot, i === activeIndex && styles.activeDot]} />
                                 ))}
                             </View>
@@ -200,7 +217,7 @@ export default function HomeScreen() {
                                             <View style={[styles.actionIconBg, { backgroundColor: item.color + '15' }]}>
                                                 <MaterialCommunityIcons name={item.icon} size={28} color={item.color} />
                                             </View>
-                                            <Text style={styles.actionLabel}>{item.label}</Text>
+                                            <Text style={styles.actionLabel}>{getActionLabel(t, item.label)}</Text>
                                         </View>
                                     </GlassCard>
                                 </TouchableOpacity>
@@ -210,17 +227,17 @@ export default function HomeScreen() {
 
                     {/* Profitable Crops */}
                     <View style={styles.sectionHeaderNoBtn}>
-                        <Text style={styles.sectionTitle}>{t('home.profitableCrops') || 'Seasonal Recommendations'}</Text>
+                        <Text style={styles.sectionTitle}>{t('home.profitableCrops') || (t('home.seasonalRecommendations') === 'home.seasonalRecommendations' ? 'Seasonal Recommendations' : t('home.seasonalRecommendations'))}</Text>
                     </View>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScrollContent}>
-                        {MOCK_RECOMMENDATIONS.map((item) => (
+                        {getMockRecommendations(t).map((item) => (
                             <GlassCard key={item.id} style={styles.recCard} intensity={25} noPadding={true}>
                                 <View style={styles.recCardInner}>
                                     <View style={styles.recIconWrapper}>
                                         <MaterialCommunityIcons name={item.icon} size={36} color={colors.primary} />
                                     </View>
                                     <Text style={styles.recName}>{item.crop}</Text>
-                                    <Text style={styles.recYield}>{item.yield} Yield</Text>
+                                    <Text style={styles.recYield}>{item.yield} {t('home.yield') === 'home.yield' ? 'Yield' : t('home.yield')}</Text>
                                 </View>
                             </GlassCard>
                         ))}
@@ -231,7 +248,7 @@ export default function HomeScreen() {
                         <TouchableOpacity onPress={() => navigation.navigate('SeasonalAnalysis')} style={styles.fullWidthBtn}>
                             <GlassCard style={styles.fullWidthGlass} intensity={40} noPadding={true}>
                                 <View style={styles.btnContent}>
-                                    <Text style={styles.btnText}>OPEN FULL ANALYSIS</Text>
+                                    <Text style={styles.btnText}>{t('home.openFullAnalysis') === 'home.openFullAnalysis' ? 'OPEN FULL ANALYSIS' : t('home.openFullAnalysis')}</Text>
                                     <Ionicons name="sparkles" size={18} color={colors.primary} />
                                 </View>
                             </GlassCard>
@@ -240,7 +257,7 @@ export default function HomeScreen() {
 
                     {/* Nearby Support */}
                     <View style={styles.sectionHeaderNoBtn}>
-                        <Text style={styles.sectionTitle}>{t('home.nearbyDepartments') || 'Nearby Support'}</Text>
+                        <Text style={styles.sectionTitle}>{t('home.nearbyDepartments') || (t('home.nearbySupport') === 'home.nearbySupport' ? 'Nearby Support' : t('home.nearbySupport'))}</Text>
                     </View>
                     <View style={styles.sectionContainer}>
                         {departments.length > 0 ? departments.map((dept) => (
@@ -261,7 +278,7 @@ export default function HomeScreen() {
                                 </View>
                             </GlassCard>
                         )) : (
-                            <View style={styles.locationPlaceholder}><ActivityIndicator color={colors.primary} size="small" /><Text style={styles.locationPlaceholderText}>Locating support...</Text></View>
+                            <View style={styles.locationPlaceholder}><ActivityIndicator color={colors.primary} size="small" /><Text style={styles.locationPlaceholderText}>{t('home.locatingSupport') === 'home.locatingSupport' ? 'Locating support...' : t('home.locatingSupport')}</Text></View>
                         )}
                     </View>
 

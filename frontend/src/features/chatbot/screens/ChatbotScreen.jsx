@@ -4,6 +4,7 @@ import { MainBackground } from '../../../components/MainBackground';
 import { GlassCard } from '../../../components/GlassCard';
 import { colors, spacing, typography, borderRadius } from '../../../core/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useLanguage } from '../../../store/languageStore';
 
 const ChatbotScreen = () => {
     const [messages, setMessages] = useState([

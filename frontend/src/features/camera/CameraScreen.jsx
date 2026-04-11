@@ -6,10 +6,13 @@ import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing, typography, borderRadius } from '../../core/theme';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { useLanguage } from '../../store/languageStore';
 
 const { width, height } = Dimensions.get('window');
 
 export default function CameraScreen() {
+    const { t } = useLanguage();
+
     const navigation = useNavigation();
     const [permission, requestPermission] = useCameraPermissions();
     const cameraRef = useRef(null);
@@ -96,7 +99,7 @@ export default function CameraScreen() {
                         <View style={styles.controlsRow}>
                             <TouchableOpacity style={styles.sideBtn} onPress={pickImage}>
                                 <MaterialCommunityIcons name="image-area" size={32} color="white" />
-                                <Text style={styles.sideBtnText}>Gallery</Text>
+                                <Text style={styles.sideBtnText}>{t("camera.gallery")}</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity 

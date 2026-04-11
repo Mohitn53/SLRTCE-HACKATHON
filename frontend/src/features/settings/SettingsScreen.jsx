@@ -51,7 +51,7 @@ export default function SettingsScreen() {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
                         <Ionicons name="chevron-back" size={28} color={colors.text.primary} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Account Center</Text>
+                    <Text style={styles.headerTitle}>{t('settings.accountCenter') === 'settings.accountCenter' ? 'Account Center' : t('settings.accountCenter')}</Text>
                     <View style={{ width: 44 }} />
                 </View>
 
@@ -65,23 +65,23 @@ export default function SettingsScreen() {
                                 <MaterialCommunityIcons name="pencil" size={16} color="white" />
                             </TouchableOpacity>
                         </View>
-                        <Text style={styles.profileName}>{user?.username || 'Aggie Farmer'}</Text>
-                        <Text style={styles.profileSub}>{user?.email || 'Active Member'}</Text>
+                        <Text style={styles.profileName}>{user?.username || (t('settings.fallbackName') === 'settings.fallbackName' ? 'Aggie Farmer' : t('settings.fallbackName'))}</Text>
+                        <Text style={styles.profileSub}>{user?.email || (t('settings.fallbackEmail') === 'settings.fallbackEmail' ? 'Active Member' : t('settings.fallbackEmail'))}</Text>
                         
                         <View style={styles.statsStrip}>
                             <View style={styles.statBox}>
                                 <Text style={styles.statVal}>{scanCount}</Text>
-                                <Text style={styles.statLab}>Total Scans</Text>
+                                <Text style={styles.statLab}>{t('settings.totalScans') === 'settings.totalScans' ? 'Total Scans' : t('settings.totalScans')}</Text>
                             </View>
                             <View style={styles.statDivider} />
                             <View style={styles.statBox}>
                                 <Text style={styles.statVal}>AI</Text>
-                                <Text style={styles.statLab}>Verified</Text>
+                                <Text style={styles.statLab}>{t('settings.verified') === 'settings.verified' ? 'Verified' : t('settings.verified')}</Text>
                             </View>
                         </View>
                     </GlassCard>
 
-                    <Text style={styles.labelGroup}>Preferences</Text>
+                    <Text style={styles.labelGroup}>{t('settings.preferences') === 'settings.preferences' ? 'Preferences' : t('settings.preferences')}</Text>
 
                     <TouchableOpacity onPress={() => setShowLanguageModal(true)} activeOpacity={0.7}>
                         <GlassCard style={styles.settingRow} intensity={20}>
@@ -90,7 +90,7 @@ export default function SettingsScreen() {
                                     <MaterialCommunityIcons name="translate" size={24} color={colors.accent} />
                                 </View>
                                 <View>
-                                    <Text style={styles.settingMain}>Display Language</Text>
+                                    <Text style={styles.settingMain}>{t('settings.displayLanguage') === 'settings.displayLanguage' ? 'Display Language' : t('settings.displayLanguage')}</Text>
                                     <Text style={styles.settingSub}>{currentLanguage.nativeLabel}</Text>
                                 </View>
                             </View>
@@ -105,8 +105,8 @@ export default function SettingsScreen() {
                                     <MaterialCommunityIcons name="bell-ring-outline" size={24} color={colors.primary} />
                                 </View>
                                 <View>
-                                    <Text style={styles.settingMain}>AI Notifications</Text>
-                                    <Text style={styles.settingSub}>Instant alerts active</Text>
+                                    <Text style={styles.settingMain}>{t('settings.aiNotifications') === 'settings.aiNotifications' ? 'AI Notifications' : t('settings.aiNotifications')}</Text>
+                                    <Text style={styles.settingSub}>{t('settings.instantAlerts') === 'settings.instantAlerts' ? 'Instant alerts active' : t('settings.instantAlerts')}</Text>
                                 </View>
                             </View>
                             <View style={styles.customSwitch}>
@@ -115,18 +115,18 @@ export default function SettingsScreen() {
                         </GlassCard>
                     </TouchableOpacity>
 
-                    <Text style={styles.labelGroup}>System</Text>
+                    <Text style={styles.labelGroup}>{t('settings.system') === 'settings.system' ? 'System' : t('settings.system')}</Text>
 
                     <GlassCard style={styles.multiCard} intensity={15}>
                         <TouchableOpacity style={styles.multiRow}>
                             <MaterialCommunityIcons name="information-outline" size={22} color={colors.text.secondary} />
-                            <Text style={styles.multiText}>App Details</Text>
+                            <Text style={styles.multiText}>{t('settings.appDetails') === 'settings.appDetails' ? 'App Details' : t('settings.appDetails')}</Text>
                             <Text style={styles.versionTag}>v1.5.2</Text>
                         </TouchableOpacity>
                         <View style={styles.innerDivider} />
                         <TouchableOpacity style={styles.multiRow} onPress={logout}>
                             <MaterialCommunityIcons name="logout" size={22} color="#EF5350" />
-                            <Text style={[styles.multiText, { color: '#EF5350' }]}>Sign Out</Text>
+                            <Text style={[styles.multiText, { color: '#EF5350' }]}>{t('settings.signOut') === 'settings.signOut' ? 'Sign Out' : t('settings.signOut')}</Text>
                         </TouchableOpacity>
                     </GlassCard>
 
@@ -139,7 +139,7 @@ export default function SettingsScreen() {
                         <View style={styles.sheetContainer}>
                             <BlurView intensity={100} tint="light" style={styles.sheetBlur}>
                                 <View style={styles.sheetHandle} />
-                                <Text style={styles.sheetTitle}>Localization</Text>
+                                <Text style={styles.sheetTitle}>{t('settings.localization') === 'settings.localization' ? 'Localization' : t('settings.localization')}</Text>
                                 {LANGUAGES.map((lang) => (
                                     <TouchableOpacity 
                                         key={lang.code} 

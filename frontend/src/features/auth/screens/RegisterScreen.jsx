@@ -54,7 +54,7 @@ export default function RegisterScreen() {
                                 <GlassCard style={styles.brandIconGlass} intensity={20}>
                                     <MaterialCommunityIcons name="spa" size={50} color={colors.primary} />
                                 </GlassCard>
-                                <Text style={styles.appTitle}>Create Account</Text>
+                                <Text style={styles.appTitle}>{t("auth.registerTitle")}</Text>
                                 <Text style={styles.appSubtitle}>Start your smart farming journey</Text>
                             </View>
 

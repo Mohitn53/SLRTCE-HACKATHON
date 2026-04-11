@@ -9,13 +9,11 @@ import { BlurView } from 'expo-blur';
 import { colors, spacing } from '../core/theme';
 import { useAuth } from '../store/authStore';
 
-// Screens
+// Core Screens
 import HomeScreen from '../features/home/HomeScreen';
 import CameraScreen from '../features/camera/CameraScreen';
 import SoilMoistureScreen from '../features/soil/SoilMoistureScreen';
-import CommunityFeedScreen from '../features/community/screens/CommunityFeedScreen';
 import ChatbotScreen from '../features/chatbot/screens/ChatbotScreen';
-
 import LoginScreen from '../features/auth/screens/LoginScreen';
 import RegisterScreen from '../features/auth/screens/RegisterScreen';
 import DetectionScreen from '../features/detection/DetectionScreen';
@@ -24,7 +22,14 @@ import SettingsScreen from '../features/settings/SettingsScreen';
 import SeasonalAnalysisScreen from '../features/home/SeasonalAnalysisScreen';
 import MainLoader from '../features/splash/MainLoader';
 
-const { width } = Dimensions.get('window');
+// Community Screens
+import CommunityFeedScreen from '../features/community/screens/CommunityFeedScreen';
+import PostDetailScreen from '../features/community/screens/PostDetailScreen';
+import CreatePostScreen from '../features/community/screens/CreatePostScreen';
+import KnowledgeHubScreen from '../features/community/screens/KnowledgeHubScreen';
+import CommunityNotificationsScreen from '../features/community/screens/CommunityNotificationsScreen';
+import ForumThreadScreen from '../features/community/screens/ForumThreadScreen';
+
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -42,10 +47,10 @@ const TabNavigator = () => (
 
                 return (
                     <View style={styles.tabIconWrapper}>
-                        <MaterialCommunityIcons 
-                            name={iconName} 
-                            size={focused ? 32 : 28} 
-                            color={focused ? colors.primary : 'rgba(0,0,0,0.4)'} 
+                        <MaterialCommunityIcons
+                            name={iconName}
+                            size={focused ? 32 : 28}
+                            color={focused ? colors.primary : 'rgba(0,0,0,0.4)'}
                         />
                         {focused && <View style={styles.tabActiveIndicator} />}
                     </View>
@@ -56,11 +61,7 @@ const TabNavigator = () => (
             tabBarStyle: styles.tabBar,
             tabBarBackground: () => (
                 <View style={styles.tabBgContainer}>
-                    <BlurView 
-                        intensity={95} 
-                        tint="light" 
-                        style={StyleSheet.absoluteFill} 
-                    />
+                    <BlurView intensity={95} tint="light" style={StyleSheet.absoluteFill} />
                 </View>
             ),
             tabBarShowLabel: false,
@@ -84,11 +85,21 @@ export default function AppNavigator() {
             <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
                 {token ? (
                     <>
+                        {/* Main Tab Navigator */}
                         <Stack.Screen name="Main" component={TabNavigator} />
+
+                        {/* Core Stack Screens */}
                         <Stack.Screen name="Detection" component={DetectionScreen} />
                         <Stack.Screen name="History" component={HistoryScreen} />
                         <Stack.Screen name="Settings" component={SettingsScreen} />
-                        <Stack.Screen name="SeasonalAnalysis" component={SeasonalAnalysisScreen} />
+                        <Stack.Screen name="SeasonalAnalysis" component={SeasonalAnalysisScreen} options={{ animation: 'slide_from_right' }} />
+
+                        {/* Community Stack Screens */}
+                        <Stack.Screen name="PostDetail" component={PostDetailScreen} options={{ animation: 'slide_from_right' }} />
+                        <Stack.Screen name="CreatePost" component={CreatePostScreen} options={{ animation: 'slide_from_bottom' }} />
+                        <Stack.Screen name="KnowledgeHub" component={KnowledgeHubScreen} options={{ animation: 'slide_from_right' }} />
+                        <Stack.Screen name="CommunityNotifications" component={CommunityNotificationsScreen} options={{ animation: 'slide_from_right' }} />
+                        <Stack.Screen name="ForumThread" component={ForumThreadScreen} options={{ animation: 'slide_from_right' }} />
                     </>
                 ) : (
                     <>
@@ -111,7 +122,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent',
         borderTopWidth: 0,
         elevation: 0,
-        paddingBottom: 0, // Ensure no padding pushes icons up
+        paddingBottom: 0,
     },
     tabBgContainer: {
         position: 'absolute',
@@ -127,10 +138,10 @@ const styles = StyleSheet.create({
     },
     tabIconWrapper: {
         width: 60,
-        height: 75, // Match tab bar height exactly
+        height: 75,
         alignItems: 'center',
-        justifyContent: 'center', // Vertically center the icon
-        paddingTop: 10, // Slight offset to leave room for the dot at bottom
+        justifyContent: 'center',
+        paddingTop: 10,
     },
     tabActiveIndicator: {
         width: 6,
@@ -138,6 +149,6 @@ const styles = StyleSheet.create({
         borderRadius: 3,
         backgroundColor: colors.primary,
         position: 'absolute',
-        bottom: 12, // Precisely placed at the bottom of the bar
+        bottom: 12,
     }
 });
